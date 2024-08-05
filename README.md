@@ -3,7 +3,7 @@
 
 ### Commande Daily
 Ajoute un rappel à 00:00 chaque jour.
-Exemple :
+Exemple : <br>
 ```!ajouter_devoir 29-08-2024 18:00:00 daily "Titre du Devoir" "Description du devoir"```
 
 ### Commande Reminder

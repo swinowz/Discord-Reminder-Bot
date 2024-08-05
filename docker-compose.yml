@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  discordbot:
+    build: .
+    volumes:
+      - .:/app
+    ports:
+      - "80:80"

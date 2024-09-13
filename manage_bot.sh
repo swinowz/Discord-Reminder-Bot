@@ -1,3 +1,4 @@
+#!/bin/bash
 IMAGE_NAME="discordbot"
 CONTAINER_NAME="discordbot"
 

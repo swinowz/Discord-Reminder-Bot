@@ -1,3 +1,4 @@
+(only works for one server)
 # Discord-Reminder-Bot
 # Commandes
 

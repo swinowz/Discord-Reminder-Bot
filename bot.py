@@ -130,10 +130,10 @@ async def reminder_loop():
                 hours_until_due = int(time_diff.total_seconds() // 3600)
                 minutes_until_due = int((time_diff.total_seconds() % 3600) // 60)
 
-                embed = discord.Embed(title=f"Rappel pour '{devoir['titre']}'", color=0x00ff00)
+                embed = discord.Embed(title=f"@reminder Rappel pour '{devoir['titre']}'", color=0x00ff00)
 
                 if due_date < now:
-                    embed.title = f"Le devoir '{devoir['titre']}' est en retard"
+                    embed.title = f"@reminder  Le devoir '{devoir['titre']}' est en retard"
                     embed.description = f"Ce devoir était à rendre depuis le {devoir['date']} à {devoir['heure']}.\nLe devoir a été retiré car la date est passée."
                     await envoyer_rappel(embed)
                     devoirs_a_supprimer.append(devoir)
@@ -141,23 +141,23 @@ async def reminder_loop():
 
                 elif devoir['type'] == 'daily' and days_until_due >= 0:
                     if days_until_due == 0 and time_diff.total_seconds() > 0:
-                        embed.description = f"Il reste {hours_until_due} heures et {minutes_until_due} minutes avant l'échéance."
+                        embed.description = f"@reminder Il reste {hours_until_due} heures et {minutes_until_due} minutes avant l'échéance."
                         await envoyer_rappel(embed)
                     else:
-                        embed.description = f"Il reste {days_until_due} jour(s) avant l'échéance."
+                        embed.description = f"@reminder Il reste {days_until_due} jour(s) avant l'échéance."
                         await envoyer_rappel(embed)
                 elif devoir['type'] == 'reminder':
                     if days_until_due == 7:
-                        embed.description = f"Il reste une semaine avant l'échéance."
+                        embed.description = f"@reminder Il reste une semaine avant l'échéance."
                         await envoyer_rappel(embed)
                     elif days_until_due == 3:
-                        embed.description = f"Il reste trois jours avant l'échéance."
+                        embed.description = f"@reminder Il reste trois jours avant l'échéance."
                         await envoyer_rappel(embed)
                     elif days_until_due == 1:
-                        embed.description = f"Il reste un jour avant l'échéance."
+                        embed.description = f"@reminder Il reste un jour avant l'échéance."
                         await envoyer_rappel(embed)
                     elif days_until_due == 0 and time_diff.total_seconds() > 0:
-                        embed.description = f"Il reste {hours_until_due} heures et {minutes_until_due} minutes avant l'échéance."
+                        embed.description = f"@reminder Il reste {hours_until_due} heures et {minutes_until_due} minutes avant l'échéance."
                         await envoyer_rappel(embed)
 
             for devoir in devoirs_a_supprimer:

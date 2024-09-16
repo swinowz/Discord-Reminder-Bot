@@ -46,7 +46,6 @@ async def ajouter_devoir(ctx, date: str = None, heure: str = None, type_devoir: 
         embed = discord.Embed(title="Usage des commandes", color=0x00ff00)
         embed.add_field(name="Commande Daily", value="Ajoute un rappel quotidien à 00:00 chaque jour.\nExemple : !ajouter_devoir 29-08-2024 18:00:00 daily \"Titre du Devoir\" \"Description du devoir\"", inline=False)
         embed.add_field(name="Commande Reminder", value="Ajoute un rappel aux intervalles spécifiques (7 jours, 3 jours, 1 jour et moins de 24 heures avant l'échéance).\nExemple : !ajouter_devoir 29-08-2024 18:00:00 reminder \"Titre du Devoir\" \"Description du devoir\"", inline=False)
-        embed.add_field(name="Commande Event", value="Crée un événement Discord à la date et l'heure spécifiées.\nExemple : !ajouter_devoir 29-08-2024 18:00:00 event \"Titre de l'Événement\" \"Description de l'événement\"", inline=False)
         await ctx.send(embed=embed)
         return
 
@@ -63,19 +62,21 @@ async def ajouter_devoir(ctx, date: str = None, heure: str = None, type_devoir: 
     channel_id = ctx.channel.id
     data['channel_id'] = channel_id
 
+    # Check for duplicate entry
+    for devoir in data['devoirs']:
+        if devoir['date'] == date and devoir['heure'] == heure and devoir['description'] == description:
+            await ctx.send(f"Le devoir '{description}' pour le {date} à {heure} existe déjà.")
+            logging.info(f"Devoir en double détecté : {description} pour le {date} à {heure}")
+            return
+
+    # Add the devoir entry to JSON
+    data['devoirs'].append({'date': date, 'heure': heure, 'type': type_devoir.lower(), 'titre': titre, 'description': description})
+    sauvegarder_devoirs(data)
+    await ctx.send(f'Devoir ajouté : {titre} pour le {date} à {heure}')
+    logging.info(f"Devoir ajouté : {titre} pour le {date} à {heure}")
+
+    # Creating a Discord event for both 'daily' and 'reminder' types
     if type_devoir.lower() in ['daily', 'reminder']:
-        for devoir in data['devoirs']:
-            if devoir['date'] == date and devoir['heure'] == heure and devoir['description'] == description:
-                await ctx.send(f"Le devoir '{description}' pour le {date} à {heure} existe déjà.")
-                logging.info(f"Devoir en double détecté : {description} pour le {date} à {heure}")
-                return
-
-        data['devoirs'].append({'date': date, 'heure': heure, 'type': type_devoir.lower(), 'titre': titre, 'description': description})
-        sauvegarder_devoirs(data)
-        await ctx.send(f'Devoir ajouté : {titre} pour le {date} à {heure}')
-        logging.info(f"Devoir ajouté : {titre} pour le {date} à {heure}")
-
-    if type_devoir.lower() == 'event':
         try:
             event = await ctx.guild.create_scheduled_event(
                 name=titre,
@@ -86,8 +87,16 @@ async def ajouter_devoir(ctx, date: str = None, heure: str = None, type_devoir: 
                 privacy_level=discord.PrivacyLevel.guild_only,
                 location="CCIDISCORD"
             )
-            await ctx.send(f"Événement ajouté : {titre} pour le {date} à {heure}")
-            logging.info(f"Événement ajouté : {titre} pour le {date} à {heure}")
+
+            # Save the event ID in JSON for future reference
+            for devoir in data['devoirs']:
+                if devoir['date'] == date and devoir['heure'] == heure:
+                    devoir['event_id'] = event.id
+                    break
+            sauvegarder_devoirs(data)
+
+            await ctx.send(f"Événement Discord ajouté pour le devoir '{titre}' à {date} {heure}.")
+            logging.info(f"Événement Discord ajouté pour le devoir '{titre}' à {date} {heure}.")
         except Exception as e:
             await ctx.send(f"Erreur lors de la création de l'événement : {e}")
             logging.error(f"Erreur lors de la création de l'événement : {e}")
@@ -109,7 +118,9 @@ async def list(ctx):
 async def on_command_error(ctx, error):
     logging.error(f"Une erreur s'est produite lors de l'exécution de la commande : {error}")
     await ctx.send(f"Une erreur s'est produite : {error}")
+
 reminder_sent_today = False
+
 @tasks.loop(minutes=1)
 async def reminder_loop():
     global reminder_sent_today
@@ -163,21 +174,18 @@ async def reminder_loop():
             for devoir in devoirs_a_supprimer:
                 data['devoirs'].remove(devoir)
             sauvegarder_devoirs(data)
+
             reminder_sent_today = True
     else:
         reminder_sent_today = False
 
-
 async def envoyer_rappel(embed):
-    logging.debug(f"Essai d'envoi de rappel : {embed.to_dict()}")
-    if data['channel_id']:
-        channel = bot.get_channel(data['channel_id'])
+    channel_id = data.get('channel_id')
+    if channel_id:
+        channel = bot.get_channel(channel_id)
         if channel:
             await channel.send(embed=embed)
-            logging.info(f"Rappel envoyé : {embed.to_dict()}")
         else:
-            logging.error("Canal non trouvé")
-    else:
-        logging.error("ID du canal non défini")
+            logging.warning(f"Impossible de trouver le canal avec l'ID : {channel_id}")
 
 bot.run(TOKEN)

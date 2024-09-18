@@ -6,7 +6,7 @@ import os
 import logging
 import pytz
 
-TOKEN = 'MTI2NzA5MjIwNzQwNDQ0OTgyMw.Gp1SFc.B3MF5IUsFQuiPzhaEEx1zpc1fg2p0aTYatZzTA'
+TOKEN = ''
 PREFIX = '!'
 
 logging.basicConfig(level=logging.DEBUG)

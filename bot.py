@@ -6,7 +6,7 @@ import os
 import logging
 import pytz
 
-TOKEN = ''
+TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 PREFIX = '!'
 
 logging.basicConfig(level=logging.DEBUG)

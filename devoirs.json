@@ -1,37 +1,3 @@
 {
-    "devoirs": [
-        {
-            "date": "20-09-2024",
-            "heure": "18:00:00",
-            "type": "reminder",
-            "titre": "S\u00e9curit\u00e9 Cloud",
-            "description": "\"https://e.campus-cci84.fr/mod/assign/view.php?id=1093\"",
-            "event_id": 1285292121204461618
-        },
-        {
-            "date": "19-09-2024",
-            "heure": "00:00:01",
-            "type": "reminder",
-            "titre": "R\u00e9union Sylvain",
-            "description": "\"M\u00e9thodologie d'audit -- questions PTES\"",
-            "event_id": 1285292159087673427
-        },
-        {
-            "date": "16-10-2024",
-            "heure": "00:00:01",
-            "type": "reminder",
-            "titre": "Pr\u00e9sentation d'entreprise anglais",
-            "description": "\"https://e.campus-cci84.fr/mod/assign/view.php?id=1083\"",
-            "event_id": 1285292213470756955
-        },
-        {
-            "date": "26-09-2024",
-            "heure": "00:00:01",
-            "type": "reminder",
-            "titre": "TP2Crypto Anne",
-            "description": "\"https://e.campus-cci84.fr/mod/assign/view.php?id=1064\"",
-            "event_id": 1285537069875073026
-        }
-    ],
-    "channel_id": 1283358461282746379
+    "devoirs": []
 }

@@ -30,27 +30,29 @@ Adding Homework
 ### Show commands 
 `!usage`
 
-#Update 19/09/2024
-Revamped the bot 
-Removed all type, no need to specify anymore ( default and only one now is the old "reminder" )
-The reminders will be sent when there's 14,7,3,1 and less than 1 days remaining
-Each commands are now split into multiple "modules" so it's easier to create/read the code 
-Changed commands to make them smaller
-Bot will now add a check emoji instead of sending a message ( keeping the chat clean )
-Bot will create an event when adding a homework
-New delete command, will delete both the homework AND the discord event 
-Changed the json formatting, which allows the use of the bot in multiple servers
-The bot will send the reminders in the system channel ( server settings > overview and choose the channel )
-Added gitignore file
-Cleaned requirement.txt
-Multiple fixes I forgot since I didnt write the readme before 
 
-TODOLIST
-Fix small bugs 
-Fix ratelimit or get around it / limit the commands usage 
-Add a command for settings (
-    Switching reminders language from french to english
-    Only allows commands to specific roles / perms 
-)
-Add a command to automatically set the reminder channel, instead of havign to configure a system channel in discord
+## TODO List
+
+- **Fix Small Bugs**: Address minor issues and improve stability.
+- **Rate Limit Handling**: Fix or find a workaround for rate limits; limit command usage if necessary.
+- **Settings Command**: Add a command to manage settings, including:
+    - Switching reminder language from French to English.
+    - Restricting command usage to specific roles or permissions.
+- **Automatic Reminder Channel Setup**: Add a command to automatically set the reminder channel ( -1 user action )
+
+## Update 19/09/2024
+
+- **Revamped the Bot**
+- **Simplified Event Types**: Removed all types; the default and only type is now the old "reminder". ( so no event and daily types anymore )
+- **Enhanced Reminder Schedule**: Reminders will be sent at 14, 7, 3, 1, and less than 1 day remaining. You'll be able to configure this in the future
+- **Modular Commands**: Commands are now split into multiple modules for easier code management.
+- **Commands**: Commands are shorter for simplicity.
+- **Clean Chat**: The bot will now add a check emoji instead of sending a message.
+- **Event Creation**: The bot will create an event when adding a homework assignment.
+- **Improved Delete Command**: will remove the reminder AND the event
+- **JSON**: Updated formatting to support multiple servers.
+- **System Channel Reminders**: Change from channel id to this ( find it better)
+- **Added .gitignore**
+- **Cleaned requirements.txt**
+- **Fixes**
 

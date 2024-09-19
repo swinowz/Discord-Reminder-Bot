@@ -1,6 +1,2 @@
 discord.py
-python-dotenv
-datetime
 pytz
-python-dotenv
-ratelimit

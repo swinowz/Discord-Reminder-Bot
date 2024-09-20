@@ -4,7 +4,7 @@ import json
 import os
 from modules.utility import get_env
 
-DATA_FILE = get_env('DATA_FILE')
+DATA_FILE = str(get_env('DATA_FILE'))
 
 def load_data():
     if os.path.exists(DATA_FILE):

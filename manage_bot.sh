@@ -1,6 +1,6 @@
 #!/bin/bash
-IMAGE_NAME="discordbot-test"
-CONTAINER_NAME="discordbot-test"
+IMAGE_NAME="discordbot"
+CONTAINER_NAME="discordbot"
 
 echo "Stopping and removing existing container..."
 docker compose down

@@ -1,6 +1,7 @@
 # modules/data_manager.py
 
 import json
+import os
 from modules.utility import get_env
 
 DATA_FILE = get_env('DATA_FILE')

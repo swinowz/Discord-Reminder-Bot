@@ -6,8 +6,7 @@ from modules.utility import get_env
 
 DATA_FILE = get_env('DATA_FILE')
 if DATA_FILE == None:
-    print("Please specify DATA_FILE in .env")
-    raise
+    raise Exception("Please specify DATA_FILE in .env")
 else:
     DATA_FILE = str(DATA_FILE)
 

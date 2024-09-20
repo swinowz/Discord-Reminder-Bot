@@ -2,8 +2,9 @@
 
 import json
 import os
-from modules.utility import get_env
+from modules.utility import init_env,get_env
 
+init_env()
 DATA_FILE = get_env('DATA_FILE')
 if DATA_FILE == None:
     raise Exception("Please specify DATA_FILE in .env")

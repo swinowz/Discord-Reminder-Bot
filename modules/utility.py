@@ -53,4 +53,4 @@ def init_env():
     load_dotenv()
 
 def get_env(key):
-    getenv(key)
+    return getenv(key)

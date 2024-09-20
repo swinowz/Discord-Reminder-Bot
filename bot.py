@@ -4,9 +4,11 @@ from discord.ext import commands
 import logging
 from modules.devoirs import setup_devoirs_commands
 from modules.events import setup_events, reminder_loop
-from modules.utility import setup_utility
+from modules.utility import setup_utility, init_env, get_env
 
-TOKEN = ""
+init_env()
+
+TOKEN = get_env('TOKEN')
 PREFIX = '!'
 
 # Configuration des logs

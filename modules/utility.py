@@ -3,6 +3,8 @@
 import discord
 from discord.ext import commands
 import logging
+import os
+from dotenv import load_dotenv
 
 def setup_utility(bot):
     @bot.command()
@@ -46,3 +48,9 @@ def setup_utility(bot):
         else:
             await ctx.send(f"Une erreur s'est produite : {error}")
             logging.error(f"Une erreur s'est produite : {error}")
+
+def init_env():
+    load_dotenv()
+
+def get_env(key):
+    os.getenv(key)

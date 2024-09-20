@@ -4,5 +4,4 @@ services:
   discordbot-test:
     build: .
     volumes:
-      - .:/app
-
+      - ./data:/app/data

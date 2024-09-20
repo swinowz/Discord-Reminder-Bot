@@ -19,7 +19,7 @@ def setup_events(b):
     bot = b
     # Pas besoin de démarrer la boucle ici
 
-@tasks.loop(minutes=3)
+@tasks.loop(minutes=1)
 async def reminder_loop():
     """Boucle qui vérifie les devoirs à rappeler toutes les 3 minutes."""
     tz = pytz.timezone(TIMEZONE)
@@ -47,7 +47,12 @@ async def reminder_loop():
 
             time_diff = due_date - now
             total_seconds = time_diff.total_seconds()
-            days_until_due = math.ceil(total_seconds / 86400)
+            total_days = total_seconds / 86400
+
+            #logging.info(f"Temp days : {total_days}")
+
+            days_until_due = math.floor(total_days)
+            #logging.info(f"Final days left after flooring : {days_until_due}")
             hours_until_due = (time_diff.seconds // 3600) % 24
             minutes_until_due = (time_diff.seconds % 3600) // 60
 

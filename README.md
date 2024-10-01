@@ -10,7 +10,9 @@ The Discord Homework Reminder Bot is designed to help students keep track of the
                     People will have to check "i'm interested" on the event to get notifications, can't force it...
 - **Delete Command**: Allows users to delete both the homework assignment and the associated Discord event.
 - **Multi-Server Support**: The bot's JSON formatting allows it to be used across multiple servers.
+
 ![alt text](./Images/jsonformat.png)
+
 - **System Channel Reminders**: Sends reminders in the system channel (Right click on the serer > Server Settings > Overview > Choose the channel).
 
     ![alt text](./Images/systemchannel.png)

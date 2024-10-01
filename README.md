@@ -16,7 +16,10 @@ The Discord Homework Reminder Bot is designed to help students keep track of the
     ![alt text](./Images/systemchannel.png)
 
 ## Installation
-
+You need to install it yourself, create an app in discord dev portal, create the invite link using the appropriate perms ( send messages, create embed, manage events, emojis etc ) or just make it admin if you don't want to bother fine-tuning perms
+get the token and you'll be able to start the bot
+Either start the bot using the main python file
+Or the manage_bot.sh if you want to run it in a docker container
 *WIP* 
 
 ## Usage

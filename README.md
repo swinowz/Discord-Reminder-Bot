@@ -1,8 +1,10 @@
-# Discord Homework Reminder Bot
+![image](https://github.com/user-attachments/assets/c8bea9fb-fe0b-4ccf-8493-e0f2f1469b51)# Discord Homework Reminder Bot
 
 ## Overview
 
 The Discord Homework Reminder Bot is designed to help students keep track of their homework assignments by creating events and sending reminders in a designated channel. The bot supports multiple servers and (WIP) allows for customization of reminder settings.
+
+![image](https://github.com/user-attachments/assets/760ebd69-d4a3-4525-8dab-a75f60352919)
 
 ## Features
 
@@ -23,6 +25,7 @@ get the token and you'll be able to start the bot
 Either start the bot using the main python file
 Or the manage_bot.sh if you want to run it in a docker container
 *WIP* 
+Or dm me on discord ( swinowz ) for details
 
 ## Usage
 Adding Homework

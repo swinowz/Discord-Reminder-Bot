@@ -1,4 +1,4 @@
-![image](https://github.com/user-attachments/assets/c8bea9fb-fe0b-4ccf-8493-e0f2f1469b51)# Discord Homework Reminder Bot
+# Discord Homework Reminder Bot
 
 ## Overview
 

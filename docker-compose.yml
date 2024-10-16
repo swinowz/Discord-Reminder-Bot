@@ -1,7 +1,13 @@
-version: '3.8'
-
 services:
   discordbot:
     build: .
     volumes:
       - ./data:/app/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 100M
+        reservations:
+          cpus: '0.3'
+          memory: 100M

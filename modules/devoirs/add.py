@@ -1,49 +1,37 @@
-# modules/devoirs/add.py
+# modules/add.py
 
 import discord
 from discord.ext import commands
+from modules.data_manager import data, save_data
+import logging
 from datetime import datetime, timedelta
 import pytz
-import logging
-from modules.data_manager import data, save_data
 
-# Constantes
-TIMEZONE = 'Europe/Paris'
-REMINDER_ROLE_NAME = 'reminder'
-
-def setup_add(bot):
+def setup_add_commands(bot):
     @bot.command()
-    async def add(ctx, date: str, heure: str, *, titre: str):
-        """Ajouter un nouveau devoir pour le serveur actuel."""
+    async def add(ctx, date, time, title, role_name):
+        """Ajouter un nouveau devoir."""
+        tz = pytz.timezone('Europe/Paris')
         guild_id = str(ctx.guild.id)
-        # Initialiser les données du serveur si elles n'existent pas
-        if guild_id not in data['guilds']:
-            data['guilds'][guild_id] = {'devoirs': []}
-
-        guild_data = data['guilds'][guild_id]
-
+        guild = ctx.guild
+        guild_data = data['guilds'].setdefault(guild_id, {'devoirs': [], 'settings': {}})
         try:
-            tz = pytz.timezone(TIMEZONE)
-            due_date = datetime.strptime(f"{date} {heure}", '%d-%m-%Y %H:%M:%S')
+            due_date = datetime.strptime(f"{date} {time}", '%d-%m-%Y %H:%M:%S')
             due_date = tz.localize(due_date)
         except ValueError:
-            await ctx.send("Format de date ou d'heure invalide. Utilisez JJ-MM-AAAA HH:MM:SS.")
+            await ctx.send("Format de date ou d'heure invalide. Utilisez le format `DD-MM-YYYY` pour la date et `HH:MM:SS` pour l'heure.")
             return
 
-        # Retirer les guillemets autour du titre s'ils existent
-        titre = titre.strip('"\'')
-        
-        # Vérifier les doublons
-        for devoir in guild_data['devoirs']:
-            if devoir['date'] == date and devoir['heure'] == heure and devoir['titre'].lower() == titre.lower():
-                await ctx.send(f"Le devoir '{titre}' pour le {date} à {heure} existe déjà.")
-                return
+        # Vérifier si le rôle existe
+        role = discord.utils.get(guild.roles, name=role_name)
+        if not role:
+            await ctx.send(f"Le rôle `{role_name}` n'existe pas sur ce serveur.")
+            return
 
         # Créer l'événement Discord
-        event_id = None
         try:
-            event = await ctx.guild.create_scheduled_event(
-                name=titre,
+            event = await guild.create_scheduled_event(
+                name=title,
                 start_time=due_date,
                 end_time=due_date + timedelta(hours=1),
                 entity_type=discord.EntityType.external,
@@ -52,23 +40,68 @@ def setup_add(bot):
             )
             event_id = event.id
         except Exception as e:
-            await ctx.send(f"Erreur lors de la création de l'événement Discord : {e}")
             logging.error(f"Erreur lors de la création de l'événement Discord : {e}")
+            event_id = None
 
-        # Ajouter le devoir
+        # Ajouter le devoir aux données
         devoir_data = {
             'date': date,
-            'heure': heure,
-            'titre': titre,  # Titre sans guillemets
+            'heure': time,
+            'titre': title,
             'guild_id': ctx.guild.id,
-            'reminders_sent': []
+            'role_to_ping': role.id,
+            'reminders_sent': [],
+            'event_id': event_id
         }
-
-        if event_id:
-            devoir_data['event_id'] = event_id
-
         guild_data['devoirs'].append(devoir_data)
         save_data(data)
 
-        # Ajouter une réaction de coche au message de commande
         await ctx.message.add_reaction('✅')
+
+    @bot.command()
+    async def delete(ctx, *, title):
+        """Supprimer un devoir existant."""
+        guild_id = str(ctx.guild.id)
+        guild = ctx.guild
+        guild_data = data['guilds'].get(guild_id, {'devoirs': [], 'settings': {}})
+
+        devoir_to_delete = None
+        for devoir in guild_data['devoirs']:
+            if devoir['titre'].lower() == title.lower():
+                devoir_to_delete = devoir
+                break
+
+        if devoir_to_delete:
+            # Supprimer l'événement Discord associé si existant
+            if 'event_id' in devoir_to_delete:
+                try:
+                    event = await guild.fetch_scheduled_event(devoir_to_delete['event_id'])
+                    await event.delete()
+                except Exception as e:
+                    logging.error(f"Erreur lors de la suppression de l'événement Discord : {e}")
+
+            guild_data['devoirs'].remove(devoir_to_delete)
+            save_data(data)
+            await ctx.message.add_reaction('✅')
+        else:
+            await ctx.send(f"Aucun devoir trouvé avec le titre : {title}")
+
+    @bot.command()
+    async def list(ctx):
+        """Lister tous les devoirs enregistrés."""
+        guild_id = str(ctx.guild.id)
+        guild_data = data['guilds'].get(guild_id, {'devoirs': [], 'settings': {}})
+        devoirs = guild_data['devoirs']
+
+        if not devoirs:
+            await ctx.send("Aucun devoir n'est enregistré.")
+            return
+
+        embed = discord.Embed(title="Liste des devoirs", color=0x00ff00)
+        for devoir in devoirs:
+            embed.add_field(
+                name=devoir['titre'],
+                value=f"Date : {devoir['date']} {devoir['heure']}\nRôle à pinger : <@&{devoir['role_to_ping']}>",
+                inline=False
+            )
+        await ctx.send(embed=embed)

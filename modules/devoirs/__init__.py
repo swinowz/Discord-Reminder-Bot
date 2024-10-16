@@ -1,10 +1,10 @@
 # modules/devoirs/__init__.py
 
-def setup_devoirs_commands(bot):
-    from .add import setup_add
-    from .delete import setup_delete
-    from .list import setup_list
+from .delete import setup_delete
+from .list import setup_list
+from .add import setup_add_commands
 
-    setup_add(bot)
+def setup_devoirs_commands(bot):
+    setup_add_commands(bot)
     setup_delete(bot)
     setup_list(bot)

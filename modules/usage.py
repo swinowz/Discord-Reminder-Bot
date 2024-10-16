@@ -1,4 +1,4 @@
-# modules/utility.py
+# modules/usage.py
 
 import discord
 from discord.ext import commands
@@ -6,10 +6,10 @@ import logging
 from os import getenv
 from dotenv import load_dotenv
 
-def setup_utility(bot):
+def setup_usage(bot):
     @bot.command()
     async def usage(ctx):
-        """Afficher les instructions d'utilisation."""
+        """Affiche les instructions d'utilisation."""
         embed = discord.Embed(
             title="Liste des commandes disponibles",
             color=0x00ff00
@@ -18,8 +18,8 @@ def setup_utility(bot):
             name="!add",
             value=(
                 "Ajouter un nouveau devoir.\n"
-                "Format : `!add <date> <heure> <titre>`\n"
-                "Exemple : `!add 20-09-2024 08:00:00 \"Cours de mathématiques\"`"
+                "Format : `!add <date> <heure> <titre> <rôle>`\n"
+                "Exemple : `!add 20-09-2024 08:00:00 \"Cours de mathématiques\" dev`"
             ),
             inline=False
         )
@@ -38,13 +38,28 @@ def setup_utility(bot):
             value="Lister tous les devoirs enregistrés.",
             inline=False
         )
+        embed.add_field(
+            name="!settings",
+            value=(
+                "Ouvre le menu des paramètres pour configurer le bot.\n"
+                "Options disponibles :\n"
+                "- Définir le canal des rappels\n"
+                "- Configurer les intervalles de rappels\n"
+                "- Génération de Débogage\n"
+                "- Supprimer des devoirs\n"
+                "Seuls les administrateurs peuvent utiliser cette commande."
+            ),
+            inline=False
+        )
         await ctx.send(embed=embed)
 
     @bot.event
     async def on_command_error(ctx, error):
-        """Gérer les erreurs globalement."""
+        """Gère les erreurs globalement."""
         if isinstance(error, commands.CommandNotFound):
             return  # Ignorer les commandes inconnues
+        elif isinstance(error, commands.CheckFailure):
+            return  # Les échecs de vérification sont déjà gérés
         else:
             await ctx.send(f"Une erreur s'est produite : {error}")
             logging.error(f"Une erreur s'est produite : {error}")

@@ -2,26 +2,24 @@
 
 import discord
 from discord.ext import tasks
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
-import math
 import logging
 from modules.data_manager import data, save_data
 
 # Constantes
 TIMEZONE = 'Europe/Paris'
-REMINDER_ROLE_NAME = 'reminder'
 
 bot = None  # Variable globale pour le bot
 
 def setup_events(b):
     global bot
     bot = b
-    # Pas besoin de démarrer la boucle ici
+    # La boucle de rappel sera démarrée dans bot.py
 
 @tasks.loop(minutes=1)
 async def reminder_loop():
-    """Boucle qui vérifie les devoirs à rappeler toutes les 3 minutes."""
+    """Boucle qui vérifie les rappels de devoirs toutes les minutes."""
     tz = pytz.timezone(TIMEZONE)
     now = datetime.now(tz)
     for guild_id, guild_data in data['guilds'].items():
@@ -29,14 +27,25 @@ async def reminder_loop():
         if not guild:
             continue
 
-        role = discord.utils.get(guild.roles, name=REMINDER_ROLE_NAME)
-        if not role:
-            continue
+        # Récupérer le canal configuré pour les rappels
+        channel_id = guild_data.get('settings', {}).get('reminder_channel_id')
+        if channel_id:
+            channel = guild.get_channel(channel_id)
+        else:
+            # Si aucun canal n'est défini, utiliser le canal système ou le premier canal texte disponible
+            channel = guild.system_channel or (guild.text_channels and guild.text_channels[0])
 
-        # Choisir un canal approprié
-        channel = guild.system_channel or (guild.text_channels and guild.text_channels[0])
         if not channel:
             continue
+
+        # Récupérer les intervalles de rappels configurés pour ce serveur
+        reminder_intervals = guild_data.get('settings', {}).get('reminder_intervals', [])
+        if not reminder_intervals:
+            # Si aucun intervalle n'est défini, utiliser les intervalles par défaut
+            reminder_intervals = [14 * 86400, 7 * 86400, 3 * 86400, 1 * 86400, 0]
+
+        # Trier les intervalles par ordre décroissant
+        reminder_intervals.sort(reverse=True)
 
         for devoir in guild_data['devoirs'][:]:
             try:
@@ -47,14 +56,6 @@ async def reminder_loop():
 
             time_diff = due_date - now
             total_seconds = time_diff.total_seconds()
-            total_days = total_seconds / 86400
-
-            #logging.info(f"Temp days : {total_days}")
-
-            days_until_due = math.floor(total_days)
-            #logging.info(f"Final days left after flooring : {days_until_due}")
-            hours_until_due = (time_diff.seconds // 3600) % 24
-            minutes_until_due = (time_diff.seconds % 3600) // 60
 
             if 'reminders_sent' not in devoir:
                 devoir['reminders_sent'] = []
@@ -62,7 +63,7 @@ async def reminder_loop():
             if total_seconds <= 0:
                 # Le devoir est en retard
                 embed = discord.Embed(title=f"Le devoir '{devoir['titre']}' est en retard", color=0xff0000)
-                embed.description = (f"Ce devoir était à rendre le {devoir['date']} à {devoir['heure']}.\n"
+                embed.description = (f"Ce devoir devait être rendu le {devoir['date']} à {devoir['heure']}.\n"
                                      "Il a été supprimé de la liste.")
                 await channel.send(embed=embed)
                 guild_data['devoirs'].remove(devoir)
@@ -76,21 +77,44 @@ async def reminder_loop():
                     except Exception as e:
                         logging.error(f"Erreur lors de la suppression de l'événement Discord : {e}")
             else:
-                embed = discord.Embed(title=f"Rappel : '{devoir['titre']}'", color=0x00ff00)
                 sent_reminders = devoir['reminders_sent']
-                # Envoyer des rappels à des intervalles spécifiques
-                if days_until_due in [14, 7, 3, 1] and days_until_due not in sent_reminders:
-                    embed.description = f"Il reste {days_until_due} jour(s) avant l'échéance."
-                    await channel.send(content=role.mention, embed=embed)
-                    devoir['reminders_sent'].append(days_until_due)
-                    save_data(data)
-                elif days_until_due == 0 and hours_until_due > 0 and 0 not in sent_reminders:
-                    embed.description = (f"Il reste {hours_until_due} heure(s) et "
-                                         f"{minutes_until_due} minute(s) avant l'échéance.")
-                    await channel.send(content=role.mention, embed=embed)
-                    devoir['reminders_sent'].append(0)
-                    save_data(data)
 
-@reminder_loop.before_loop
-async def before_reminder_loop():
-    await bot.wait_until_ready()
+                # Récupérer le rôle à mentionner
+                role_id = devoir.get('role_to_ping')
+                role = guild.get_role(role_id)
+
+                # Pour chaque intervalle, vérifier s'il est temps d'envoyer le rappel
+                for interval in reminder_intervals:
+                    if interval in sent_reminders:
+                        continue  # Passer les intervalles pour lesquels les rappels ont déjà été envoyés
+
+                    reminder_time = due_date - timedelta(seconds=interval)
+
+                    # Définir une marge d'erreur de 5 minutes
+                    if now >= reminder_time and (now - reminder_time).total_seconds() <= 300:
+                        # Il est temps d'envoyer le rappel
+                        time_remaining = due_date - now
+
+                        days_left = time_remaining.days
+                        hours_left = time_remaining.seconds // 3600
+                        minutes_left = (time_remaining.seconds % 3600) // 60
+
+                        if days_left > 0:
+                            embed = discord.Embed(title=f"Rappel : '{devoir['titre']}'", color=0x00ff00)
+                            embed.description = f"Il reste {days_left} jour(s) avant l'échéance."
+                        elif hours_left > 0 or minutes_left > 0:
+                            embed = discord.Embed(title=f"Rappel : '{devoir['titre']}'", color=0x00ff00)
+                            embed.description = f"Il reste {hours_left} heure(s) et {minutes_left} minute(s) avant l'échéance."
+                        else:
+                            embed = discord.Embed(title=f"Rappel : '{devoir['titre']}'", color=0xffa500)
+                            embed.description = "L'échéance est très proche !"
+
+                        if role:
+                            await channel.send(content=role.mention, embed=embed)
+                        else:
+                            await channel.send(embed=embed)
+
+                        devoir['reminders_sent'].append(interval)
+                        save_data(data)
+                        break  # Éviter d'envoyer plusieurs rappels en même temps
+

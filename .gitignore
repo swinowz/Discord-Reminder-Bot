@@ -2,3 +2,4 @@ get_token.py
 __pycache__/
 .env
 TDL
+.vscode

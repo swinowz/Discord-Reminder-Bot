@@ -2,12 +2,12 @@
 
 import json
 import os
-from modules.utility import init_env,get_env
+from modules.usage import init_env, get_env
 
 init_env()
 DATA_FILE = get_env('DATA_FILE')
-if DATA_FILE == None:
-    raise Exception("Please specify DATA_FILE in .env")
+if DATA_FILE is None:
+    raise Exception("Veuillez spécifier DATA_FILE dans .env")
 else:
     DATA_FILE = str(DATA_FILE)
 
@@ -16,15 +16,26 @@ def load_data():
         with open(DATA_FILE, 'r') as f:
             try:
                 data = json.load(f)
-                # Vérifiez si la clé 'guilds' existe
+                # On s'assure que la clé 'guilds' existe
                 if 'guilds' not in data:
-                    # Si la structure est ancienne (sans 'guilds'), initialisez avec une structure vide
                     data = {'guilds': {}}
+                else:
+                    # Pour chaque serveur, on s'assure que 'devoirs' et 'settings' existent
+                    for guild_id, guild_data in data['guilds'].items():
+                        if 'devoirs' not in guild_data:
+                            guild_data['devoirs'] = []
+                        if 'settings' not in guild_data:
+                            guild_data['settings'] = {}
+                        else:
+                            if 'reminder_channel_id' not in guild_data['settings']:
+                                guild_data['settings']['reminder_channel_id'] = None
+                            if 'reminder_intervals' not in guild_data['settings']:
+                                guild_data['settings']['reminder_intervals'] = []
                 return data
             except json.JSONDecodeError:
-                # Initialisez avec une structure vide si le JSON est invalide
+                # Si le fichier JSON est invalide, on initialise une structure vide
                 return {'guilds': {}}
-    # Initialisez avec une structure vide si le fichier n'existe pas
+    # Si le fichier n'existe pas, on initialise une structure vide
     return {'guilds': {}}
 
 def save_data(data):

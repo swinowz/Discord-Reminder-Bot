@@ -30,8 +30,8 @@ def setup_settings(bot):
         class SettingsView(discord.ui.View):
             def __init__(self, ctx):
                 super().__init__(timeout=10)  # Réduction du timeout à 10 secondes
-                self.ctx = ctx  # Stocker le contexte pour une utilisation ultérieure
-                self.message = None  # Stocker le message du menu pour pouvoir le gérer
+                self.ctx = ctx
+                self.message = None
 
             async def on_timeout(self):
                 # Désactiver les boutons lorsque le temps est écoulé
@@ -58,9 +58,11 @@ def setup_settings(bot):
 
                 await interaction.response.send_message(
                     "Veuillez sélectionner le canal pour les rappels.",
-                    view=view,
-                    delete_after=15  # Le message sera supprimé après 15 secondes
+                    view=view
                 )
+                # Supprimer le message après un délai
+                message = await interaction.original_response()
+                await message.delete(delay=15)
 
             @discord.ui.button(label="Configurer les intervalles de rappels", style=discord.ButtonStyle.secondary)
             async def set_reminder_intervals(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -68,16 +70,18 @@ def setup_settings(bot):
                 intervals_view = IntervalsView(self.ctx)
                 await interaction.response.send_message(
                     "Veuillez sélectionner les intervalles de rappels souhaités.",
-                    view=intervals_view,
-                    delete_after=15  # Le message sera supprimé après 15 secondes
+                    view=intervals_view
                 )
+                # Supprimer le message après un délai
+                message = await interaction.original_response()
+                await message.delete(delay=15)
 
             @discord.ui.button(label="Génération de Débogage", style=discord.ButtonStyle.success)
             async def debug_generation(self, interaction: discord.Interaction, button: discord.ui.Button):
-                # Ajouter cinq devoirs avec des échéances différentes
                 await interaction.response.defer()
                 await self.generate_debug_homeworks()
-                await interaction.followup.send("Les devoirs de débogage ont été générés.", delete_after=5)
+                message = await interaction.followup.send("Les devoirs de débogage ont été générés.")
+                await message.delete(delay=5)
 
             @discord.ui.button(label="Supprimer des devoirs", style=discord.ButtonStyle.danger)
             async def delete_homeworks(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -85,13 +89,16 @@ def setup_settings(bot):
                 delete_view = DeleteOptionsView(self.ctx)
                 await interaction.response.send_message(
                     "Choisissez une option de suppression :",
-                    view=delete_view,
-                    delete_after=15  # Le message sera supprimé après 15 secondes
+                    view=delete_view
                 )
+                # Supprimer le message après un délai
+                message = await interaction.original_response()
+                await message.delete(delay=15)
 
             @discord.ui.button(label="Annuler", style=discord.ButtonStyle.grey)
             async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.response.send_message("Opération annulée.", delete_after=5)
+                message = await interaction.response.send_message("Opération annulée.")
+                await message.delete(delay=5)
                 self.stop()
                 # Supprimer le menu des paramètres
                 if self.message:
@@ -152,7 +159,7 @@ def setup_settings(bot):
         class ChannelSelect(discord.ui.Select):
             def __init__(self, options, ctx):
                 super().__init__(placeholder="Sélectionnez un canal...", options=options)
-                self.ctx = ctx  # Stocker le contexte pour une utilisation ultérieure
+                self.ctx = ctx
 
             async def callback(self, interaction: discord.Interaction):
                 channel_id = int(self.values[0])
@@ -161,13 +168,14 @@ def setup_settings(bot):
                 guild_data = data['guilds'].setdefault(guild_id, {'devoirs': [], 'settings': {}})
                 guild_data['settings']['reminder_channel_id'] = channel_id
                 save_data(data)
-                await interaction.response.send_message(f"Le canal des rappels a été défini sur {channel.mention}.", delete_after=5)
+                message = await interaction.response.send_message(f"Le canal des rappels a été défini sur {channel.mention}.")
+                await message.delete(delay=5)
                 self.view.stop()
 
         # Classe pour la configuration des intervalles
         class IntervalsView(discord.ui.View):
             def __init__(self, ctx):
-                super().__init__(timeout=10)  # Réduction du timeout à 10 secondes
+                super().__init__(timeout=10)
                 self.ctx = ctx
                 self.selected_intervals = []
                 self.interval_options = [
@@ -192,7 +200,6 @@ def setup_settings(bot):
                 for child in self.children:
                     if isinstance(child, discord.ui.Button) or isinstance(child, discord.ui.Select):
                         child.disabled = True
-                # Optionnellement, supprimer le message associé si vous le stockez
 
         class IntervalsSelect(discord.ui.Select):
             def __init__(self, options, parent_view):
@@ -205,13 +212,14 @@ def setup_settings(bot):
                 guild_data = data['guilds'].setdefault(guild_id, {'devoirs': [], 'settings': {}})
                 guild_data['settings']['reminder_intervals'] = self.parent_view.selected_intervals
                 save_data(data)
-                await interaction.response.send_message("Les intervalles de rappels ont été mis à jour.", delete_after=5)
+                message = await interaction.response.send_message("Les intervalles de rappels ont été mis à jour.")
+                await message.delete(delay=5)
                 self.parent_view.stop()
 
         # Classe pour la sélection des options de suppression
         class DeleteOptionsView(discord.ui.View):
             def __init__(self, ctx):
-                super().__init__(timeout=10)  # Réduction du timeout à 10 secondes
+                super().__init__(timeout=10)
                 self.ctx = ctx
 
             async def on_timeout(self):
@@ -219,56 +227,60 @@ def setup_settings(bot):
                 for child in self.children:
                     child.disabled = True
 
-        @discord.ui.button(label="Supprimer les devoirs de débogage", style=discord.ButtonStyle.danger)
-        async def delete_debug(self, interaction: discord.Interaction, button: discord.ui.Button):
-            await interaction.response.defer()
-            await self.delete_homeworks(debug_only=True)
-            await interaction.followup.send("Les devoirs de débogage ont été supprimés.", delete_after=5)
-            self.stop()
+            @discord.ui.button(label="Supprimer les devoirs de débogage", style=discord.ButtonStyle.danger)
+            async def delete_debug(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await interaction.response.defer()
+                await self.delete_homeworks(debug_only=True)
+                message = await interaction.followup.send("Les devoirs de débogage ont été supprimés.")
+                await message.delete(delay=5)
+                self.stop()
 
-        @discord.ui.button(label="Supprimer tous les devoirs", style=discord.ButtonStyle.danger)
-        async def delete_all(self, interaction: discord.Interaction, button: discord.ui.Button):
-            confirm_view = ConfirmView(self.ctx)
-            await interaction.response.send_message(
-                "⚠️ **ATTENTION** ⚠️\n\nÊtes-vous sûr de vouloir supprimer **tous les devoirs** et les événements associés ? Cette action est irréversible.",
-                view=confirm_view,
-                delete_after=15  # Le message sera supprimé après 15 secondes
-            )
-            self.stop()
+            @discord.ui.button(label="Supprimer tous les devoirs", style=discord.ButtonStyle.danger)
+            async def delete_all(self, interaction: discord.Interaction, button: discord.ui.Button):
+                confirm_view = ConfirmView(self.ctx)
+                await interaction.response.send_message(
+                    "⚠️ **ATTENTION** ⚠️\n\nÊtes-vous sûr de vouloir supprimer **tous les devoirs** et les événements associés ? Cette action est irréversible.",
+                    view=confirm_view
+                )
+                # Supprimer le message après un délai
+                message = await interaction.original_response()
+                await message.delete(delay=15)
+                self.stop()
 
-        @discord.ui.button(label="Annuler", style=discord.ButtonStyle.grey)
-        async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-            await interaction.response.send_message("Opération annulée.", delete_after=5)
-            self.stop()
+            @discord.ui.button(label="Annuler", style=discord.ButtonStyle.grey)
+            async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+                message = await interaction.response.send_message("Opération annulée.")
+                await message.delete(delay=5)
+                self.stop()
 
-        async def delete_homeworks(self, debug_only=False):
-            guild_id = str(self.ctx.guild.id)
-            guild = self.ctx.guild
-            guild_data = data['guilds'].setdefault(guild_id, {'devoirs': [], 'settings': {}})
+            async def delete_homeworks(self, debug_only=False):
+                guild_id = str(self.ctx.guild.id)
+                guild = self.ctx.guild
+                guild_data = data['guilds'].setdefault(guild_id, {'devoirs': [], 'settings': {}})
 
-            devoirs_to_delete = []
-            for devoir in guild_data['devoirs']:
-                if debug_only and not devoir.get('debug', False):
-                    continue
-                devoirs_to_delete.append(devoir)
+                devoirs_to_delete = []
+                for devoir in guild_data['devoirs']:
+                    if debug_only and not devoir.get('debug', False):
+                        continue
+                    devoirs_to_delete.append(devoir)
 
-            # Supprimer les événements Discord associés
-            for devoir in devoirs_to_delete:
-                if 'event_id' in devoir:
-                    try:
-                        event = await guild.fetch_scheduled_event(devoir['event_id'])
-                        await event.delete()
-                    except Exception as e:
-                        logging.error(f"Erreur lors de la suppression de l'événement Discord : {e}")
+                # Supprimer les événements Discord associés
+                for devoir in devoirs_to_delete:
+                    if 'event_id' in devoir:
+                        try:
+                            event = await guild.fetch_scheduled_event(devoir['event_id'])
+                            await event.delete()
+                        except Exception as e:
+                            logging.error(f"Erreur lors de la suppression de l'événement Discord : {e}")
 
-            # Retirer les devoirs supprimés de la liste
-            guild_data['devoirs'] = [d for d in guild_data['devoirs'] if d not in devoirs_to_delete]
-            save_data(data)
+                # Retirer les devoirs supprimés de la liste
+                guild_data['devoirs'] = [d for d in guild_data['devoirs'] if d not in devoirs_to_delete]
+                save_data(data)
 
         # Classe pour la confirmation de suppression
         class ConfirmView(discord.ui.View):
             def __init__(self, ctx):
-                super().__init__(timeout=10)  # Réduction du timeout à 10 secondes
+                super().__init__(timeout=10)
                 self.ctx = ctx
 
             async def on_timeout(self):
@@ -280,12 +292,13 @@ def setup_settings(bot):
             async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
                 # Déférer la réponse de l'interaction
                 await interaction.response.defer()
+
                 guild_id = str(self.ctx.guild.id)
                 guild = self.ctx.guild
                 guild_data = data['guilds'].setdefault(guild_id, {'devoirs': [], 'settings': {}})
 
                 # Supprimer les événements Discord associés
-                for devoir in guild_data['devoirs']:
+                for devoir in guild_data['devoirs'][:]:  # Utiliser une copie de la liste
                     if 'event_id' in devoir:
                         try:
                             event = await guild.fetch_scheduled_event(devoir['event_id'])
@@ -293,28 +306,31 @@ def setup_settings(bot):
                         except Exception as e:
                             logging.error(f"Erreur lors de la suppression de l'événement Discord : {e}")
 
-                # Vider la liste des devoirs
-                guild_data['devoirs'].clear()
+                    guild_data['devoirs'].remove(devoir)  # Supprimer le devoir de la liste
+
                 save_data(data)
 
-                await interaction.followup.send("Tous les devoirs et les événements associés ont été supprimés.", delete_after=5)
+                message = await interaction.followup.send("Tous les devoirs et les événements associés ont été supprimés.")
+                await message.delete(delay=5)
                 self.stop()
 
             @discord.ui.button(label="Annuler", style=discord.ButtonStyle.grey)
             async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.response.send_message("Suppression annulée.", delete_after=5)
+                message = await interaction.response.send_message("Suppression annulée.")
+                await message.delete(delay=5)
                 self.stop()
 
         # Envoyer le message du menu des paramètres
         view = SettingsView(ctx)
         message = await ctx.send(embed=embed, view=view)
-        view.message = message  # Enregistrer le message dans la vue pour pouvoir le gérer
+        view.message = message
 
     # Gestion des erreurs pour permissions manquantes
     @settings.error
     async def settings_error(ctx, error):
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send("Vous devez être administrateur pour utiliser cette commande.", delete_after=5)
+            message = await ctx.send("Vous devez être administrateur pour utiliser cette commande.")
+            await message.delete(delay=5)
             # Supprimer le message de l'utilisateur après avoir informé de l'erreur
             try:
                 await ctx.message.delete(delay=5)

@@ -1,1 +1,63 @@
-{}
+{
+    "guilds": {
+        "921702862688489502": {
+            "devoirs": [
+                {
+                    "date": "18-10-2024",
+                    "heure": "09:34:47",
+                    "titre": "Devoir de d\u00e9bogage 1",
+                    "guild_id": 921702862688489502,
+                    "role_to_ping": 1296211171178975302,
+                    "reminders_sent": [
+                        86400
+                    ],
+                    "debug": true,
+                    "event_id": 1296375847552553051
+                },
+                {
+                    "date": "19-10-2024",
+                    "heure": "09:34:47",
+                    "titre": "Devoir de d\u00e9bogage 2",
+                    "guild_id": 921702862688489502,
+                    "role_to_ping": 1296211171178975302,
+                    "reminders_sent": [
+                        172800
+                    ],
+                    "debug": true,
+                    "event_id": 1296375850148691979
+                },
+                {
+                    "date": "20-10-2024",
+                    "heure": "09:34:47",
+                    "titre": "Devoir de d\u00e9bogage 3",
+                    "guild_id": 921702862688489502,
+                    "role_to_ping": 1296211171178975302,
+                    "reminders_sent": [
+                        259200
+                    ],
+                    "debug": true,
+                    "event_id": 1296375851923013685
+                },
+                {
+                    "date": "22-10-2024",
+                    "heure": "09:34:47",
+                    "titre": "Devoir de d\u00e9bogage 4",
+                    "guild_id": 921702862688489502,
+                    "role_to_ping": 1296211171178975302,
+                    "reminders_sent": [],
+                    "debug": true,
+                    "event_id": 1296375854128955463
+                }
+            ],
+            "settings": {
+                "reminder_intervals": [
+                    604800,
+                    259200,
+                    172800,
+                    86400
+                ],
+                "reminder_channel_id": 969680964534009906
+            }
+        }
+    }
+}

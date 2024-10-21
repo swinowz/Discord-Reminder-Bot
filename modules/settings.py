@@ -76,12 +76,12 @@ def setup_settings(bot):
                 message = await interaction.original_response()
                 await message.delete(delay=15)
 
-            @discord.ui.button(label="Génération de Débogage", style=discord.ButtonStyle.success)
-            async def debug_generation(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.response.defer()
-                await self.generate_debug_homeworks()
-                message = await interaction.followup.send("Les devoirs de débogage ont été générés.")
-                await message.delete(delay=5)
+            #@discord.ui.button(label="Génération de Débogage", style=discord.ButtonStyle.success)
+            #async def debug_generation(self, interaction: discord.Interaction, button: discord.ui.Button):
+            #    await interaction.response.defer()
+            #    await self.generate_debug_homeworks()
+            #    message = await interaction.followup.send("Les devoirs de débogage ont été générés.")
+            #    await message.delete(delay=5)
 
             @discord.ui.button(label="Supprimer des devoirs", style=discord.ButtonStyle.danger)
             async def delete_homeworks(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -95,7 +95,7 @@ def setup_settings(bot):
                 message = await interaction.original_response()
                 await message.delete(delay=15)
 
-            @discord.ui.button(label="Annuler", style=discord.ButtonStyle.grey)
+            """@discord.ui.button(label="Annuler", style=discord.ButtonStyle.grey)
             async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
                 message = await interaction.response.send_message("Opération annulée.")
                 await message.delete(delay=5)
@@ -153,7 +153,7 @@ def setup_settings(bot):
 
                     guild_data['devoirs'].append(devoir_data)
 
-                save_data(data)
+                save_data(data)"""
 
         # Classe pour la sélection des canaux
         class ChannelSelect(discord.ui.Select):
@@ -227,13 +227,13 @@ def setup_settings(bot):
                 for child in self.children:
                     child.disabled = True
 
-            @discord.ui.button(label="Supprimer les devoirs de débogage", style=discord.ButtonStyle.danger)
+            """@discord.ui.button(label="Supprimer les devoirs de débogage", style=discord.ButtonStyle.danger)
             async def delete_debug(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await interaction.response.defer()
                 await self.delete_homeworks(debug_only=True)
                 message = await interaction.followup.send("Les devoirs de débogage ont été supprimés.")
                 await message.delete(delay=5)
-                self.stop()
+                self.stop()"""
 
             @discord.ui.button(label="Supprimer tous les devoirs", style=discord.ButtonStyle.danger)
             async def delete_all(self, interaction: discord.Interaction, button: discord.ui.Button):

@@ -45,7 +45,6 @@ def setup_usage(bot):
                 "Options disponibles :\n"
                 "- Définir le canal des rappels\n"
                 "- Configurer les intervalles de rappels\n"
-                "- Génération de Débogage\n"
                 "- Supprimer des devoirs\n"
                 "Seuls les administrateurs peuvent utiliser cette commande."
             ),

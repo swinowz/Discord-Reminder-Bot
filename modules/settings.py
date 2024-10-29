@@ -95,66 +95,6 @@ def setup_settings(bot):
                 message = await interaction.original_response()
                 await message.delete(delay=15)
 
-            """@discord.ui.button(label="Annuler", style=discord.ButtonStyle.grey)
-            async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-                message = await interaction.response.send_message("Opération annulée.")
-                await message.delete(delay=5)
-                self.stop()
-                # Supprimer le menu des paramètres
-                if self.message:
-                    await self.message.delete()
-
-            async def generate_debug_homeworks(self):
-                guild_id = str(self.ctx.guild.id)
-                guild_data = data['guilds'].setdefault(guild_id, {'devoirs': [], 'settings': {}})
-                tz = pytz.timezone('Europe/Paris')
-                now = datetime.now(tz)
-
-                intervals = [1, 2, 3, 5, 7]  # Jours d'échéance pour les devoirs de débogage
-                role_name = "debug"
-                role = discord.utils.get(self.ctx.guild.roles, name=role_name)
-                if not role:
-                    # Créer le rôle de débogage s'il n'existe pas
-                    role = await self.ctx.guild.create_role(name=role_name)
-
-                for i, days in enumerate(intervals):
-                    due_date = now + timedelta(days=days)
-                    date_str = due_date.strftime('%d-%m-%Y')
-                    time_str = due_date.strftime('%H:%M:%S')
-                    titre = f"Devoir de débogage {i+1}"
-
-                    devoir_data = {
-                        'date': date_str,
-                        'heure': time_str,
-                        'titre': titre,
-                        'guild_id': self.ctx.guild.id,
-                        'role_to_ping': role.id,
-                        'reminders_sent': [],
-                        'debug': True  # Marqueur pour indiquer que c'est un devoir de débogage
-                    }
-
-                    # Créer un événement Discord
-                    event_id = None
-                    try:
-                        event = await self.ctx.guild.create_scheduled_event(
-                            name=titre,
-                            start_time=due_date,
-                            end_time=due_date + timedelta(hours=1),
-                            entity_type=discord.EntityType.external,
-                            privacy_level=discord.PrivacyLevel.guild_only,
-                            location="Discord"
-                        )
-                        event_id = event.id
-                    except Exception as e:
-                        logging.error(f"Erreur lors de la création de l'événement Discord : {e}")
-
-                    if event_id:
-                        devoir_data['event_id'] = event_id
-
-                    guild_data['devoirs'].append(devoir_data)
-
-                save_data(data)"""
-
         # Classe pour la sélection des canaux
         class ChannelSelect(discord.ui.Select):
             def __init__(self, options, ctx):
@@ -226,14 +166,6 @@ def setup_settings(bot):
                 # Désactiver les boutons lorsque le temps est écoulé
                 for child in self.children:
                     child.disabled = True
-
-            """@discord.ui.button(label="Supprimer les devoirs de débogage", style=discord.ButtonStyle.danger)
-            async def delete_debug(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.response.defer()
-                await self.delete_homeworks(debug_only=True)
-                message = await interaction.followup.send("Les devoirs de débogage ont été supprimés.")
-                await message.delete(delay=5)
-                self.stop()"""
 
             @discord.ui.button(label="Supprimer tous les devoirs", style=discord.ButtonStyle.danger)
             async def delete_all(self, interaction: discord.Interaction, button: discord.ui.Button):

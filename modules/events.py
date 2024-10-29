@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import pytz
 import logging
 from modules.data_manager import data, save_data
+import math
 
 # Constantes
 TIMEZONE = 'Europe/Paris'
@@ -17,11 +18,40 @@ def setup_events(b):
     bot = b
     # La boucle de rappel sera démarrée dans bot.py
 
+def get_time_left(due_date, tz):
+    """Calculate and format the remaining time for a reminder, ensuring days round up when > 24 hours."""
+    now = datetime.now(tz)
+    time_left = due_date - now
+    total_seconds = int(time_left.total_seconds())
+    if total_seconds < 0:
+        return "Échéance dépassée."
+
+    # Convertir en jours, heures, minutes
+    days = total_seconds // 86400
+    hours = (total_seconds % 86400) // 3600
+    minutes = (total_seconds % 3600) // 60
+
+    # If there are any hours remaining with more than 24 hours in total, round up days
+    if hours > 0 or minutes > 0:
+        days += 1
+
+    # Afficher uniquement les jours si plus de 24 heures, sinon afficher heures/minutes restants
+    if days > 1:
+        return f"Il reste {days} jour(s) avant l'échéance."
+    else:
+        parts = []
+        if hours > 0:
+            parts.append(f"{hours} heure(s)")
+        if minutes > 0:
+            parts.append(f"{minutes} minute(s)")
+        return "Il reste " + ", ".join(parts) + " avant l'échéance."
+
 @tasks.loop(minutes=1)
 async def reminder_loop():
     """Boucle qui vérifie les rappels de devoirs toutes les minutes."""
     tz = pytz.timezone(TIMEZONE)
     now = datetime.now(tz)
+
     for guild_id, guild_data in data['guilds'].items():
         guild = bot.get_guild(int(guild_id))
         if not guild:
@@ -29,23 +59,13 @@ async def reminder_loop():
 
         # Récupérer le canal configuré pour les rappels
         channel_id = guild_data.get('settings', {}).get('reminder_channel_id')
-        if channel_id:
-            channel = guild.get_channel(channel_id)
-        else:
-            # Si aucun canal n'est défini, utiliser le canal système ou le premier canal texte disponible
-            channel = guild.system_channel or (guild.text_channels and guild.text_channels[0])
-
+        channel = guild.get_channel(channel_id) if channel_id else guild.system_channel or (guild.text_channels and guild.text_channels[0])
         if not channel:
             continue
 
         # Récupérer les intervalles de rappels configurés pour ce serveur
-        reminder_intervals = guild_data.get('settings', {}).get('reminder_intervals', [])
-        if not reminder_intervals:
-            # Si aucun intervalle n'est défini, utiliser les intervalles par défaut
-            reminder_intervals = [14 * 86400, 7 * 86400, 3 * 86400, 1 * 86400, 0]
-
-        # Trier les intervalles par ordre décroissant
-        reminder_intervals.sort(reverse=True)
+        reminder_intervals = guild_data.get('settings', {}).get('reminder_intervals', [14 * 86400, 7 * 86400, 3 * 86400, 1 * 86400, 0])
+        reminder_intervals.sort(reverse=True)  # Trier par ordre décroissant
 
         for devoir in guild_data['devoirs'][:]:
             try:
@@ -78,12 +98,10 @@ async def reminder_loop():
                         logging.error(f"Erreur lors de la suppression de l'événement Discord : {e}")
             else:
                 sent_reminders = devoir['reminders_sent']
-
-                # Récupérer le rôle à mentionner
                 role_id = devoir.get('role_to_ping')
                 role = guild.get_role(role_id)
 
-                # Pour chaque intervalle, vérifier s'il est temps d'envoyer le rappel
+                # Envoyer les rappels en fonction des intervalles de rappel
                 for interval in reminder_intervals:
                     if interval in sent_reminders:
                         continue  # Passer les intervalles pour lesquels les rappels ont déjà été envoyés
@@ -93,21 +111,8 @@ async def reminder_loop():
                     # Définir une marge d'erreur de 5 minutes
                     if now >= reminder_time and (now - reminder_time).total_seconds() <= 300:
                         # Il est temps d'envoyer le rappel
-                        time_remaining = due_date - now
-
-                        days_left = time_remaining.days
-                        hours_left = time_remaining.seconds // 3600
-                        minutes_left = (time_remaining.seconds % 3600) // 60
-
-                        if days_left > 0:
-                            embed = discord.Embed(title=f"Rappel : '{devoir['titre']}'", color=0x00ff00)
-                            embed.description = f"Il reste {days_left} jour(s) avant l'échéance."
-                        elif hours_left > 0 or minutes_left > 0:
-                            embed = discord.Embed(title=f"Rappel : '{devoir['titre']}'", color=0x00ff00)
-                            embed.description = f"Il reste {hours_left} heure(s) et {minutes_left} minute(s) avant l'échéance."
-                        else:
-                            embed = discord.Embed(title=f"Rappel : '{devoir['titre']}'", color=0xffa500)
-                            embed.description = "L'échéance est très proche !"
+                        embed = discord.Embed(title=f"Rappel : '{devoir['titre']}'", color=0x00ff00)
+                        embed.description = get_time_left(due_date, tz)
 
                         if role:
                             await channel.send(content=role.mention, embed=embed)
@@ -118,3 +123,7 @@ async def reminder_loop():
                         save_data(data)
                         break  # Éviter d'envoyer plusieurs rappels en même temps
 
+@reminder_loop.before_loop
+async def before_reminder_loop():
+    await bot.wait_until_ready()
+    logging.info("La boucle de rappel est prête et démarrera sous peu.")

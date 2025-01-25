@@ -256,7 +256,7 @@ async def add_command(ctx: SlashContext, date: str, heure: str, titre: str, role
     guild_data["devoirs"].append(devoir)
     save_data(global_data, DATA_FILE)
 
-    await ctx.send("✅ Devoir ajouté avec succès !")
+    await ctx.send("✅ Devoir ajouté avec succès ✅", ephemeral=True)
 
 
 #----------------------------#
@@ -279,15 +279,15 @@ async def delete_command(ctx: SlashContext, title: str):
     guild_data = global_data["guilds"].get(guild_id_str, {"devoirs": [], "settings": {}})
     devoirs = guild_data["devoirs"]
     if not devoirs:
-        return await ctx.send("Aucun devoir n'est enregistré pour ce serveur.")
+        return await ctx.send("Aucun devoir n'est enregistré pour ce serveur.", ephemeral=True)
     devoir_to_delete = next((d for d in devoirs if d["titre"].lower() == title.lower()), None)
     if not devoir_to_delete:
-        return await ctx.send(f"Aucun devoir trouvé avec le titre: {title}")
+        return await ctx.send(f"Aucun devoir trouvé avec le titre: {title}", ephemeral=True)
     if "event_id" in devoir_to_delete:
         await delete_scheduled(TOKEN, ctx.guild_id, devoir_to_delete["event_id"])
     devoirs.remove(devoir_to_delete)
     save_data(global_data, DATA_FILE)
-    await ctx.send(f"Devoir '{title}' supprimé avec succès ✅")
+    await ctx.send(f"Devoir '{title}' supprimé avec succès ✅", ephemeral=True)
 
 #----------------------------#
 ###--------  List  --------###
@@ -303,9 +303,9 @@ async def list_command(ctx: SlashContext):
     guild_data = global_data["guilds"].get(guild_id_str, {"devoirs": [], "settings": {}})
     devoirs = guild_data["devoirs"]
     if not devoirs:
-        return await ctx.send("Aucun devoir n'est enregistré pour ce serveur.")
+        return await ctx.send("Aucun devoir n'est enregistré pour ce serveur.", ephemeral=True)
     lines = [f"- **{d['titre']}** (Date: {d['date']} {d['heure']}, Rôle: <@&{d['role_to_ping']}>)" for d in devoirs]
-    await ctx.send("Devoirs enregistrés:\n" + "\n".join(lines))
+    await ctx.send("Devoirs enregistrés:\n" + "\n".join(lines), ephemeral=True)
 
 #----------------------------#
 ###---- Setup Channels ----###

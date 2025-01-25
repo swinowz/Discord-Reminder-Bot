@@ -310,12 +310,9 @@ async def list_command(ctx: SlashContext):
 #----------------------------#
 ###---- Setup Channels ----###
 #----------------------------#
-@interactions.slash_command(
-    name="setupchannel",
-    description="Définir le canal de rappel",
-    scopes=[guild_id_int],
-    default_member_permissions= 8192 | 8  # 8 = Admin et 8192 = manage_messages <- en gros ceux qui ont au moins une des perms peuvent faire la cmd 
-)
+@interactions.slash_command(name="setupchannel",description="Définir le canal de rappel",scopes=[guild_id_int],
+                            default_member_permissions= 8192)  # 8 = Admin et 8192 = manage_messages <- en gros ceux qui ont au moins une des perms peuvent faire la cmd 
+
 async def setupchannel_command(ctx: SlashContext):
     raw_channels = await get_channels(TOKEN, ctx.guild_id)
     text_channels = [ch for ch in raw_channels if ch["type"] == 0]
@@ -351,7 +348,8 @@ async def on_select_reminder_channel(ctx: ComponentContext):
 #----------------------------#
 ###--- Setup intervals ----###
 #----------------------------#
-@interactions.slash_command(name="setupintervals",description="Définir les intervalles de rappel",scopes=[guild_id_int],default_member_permissions= 8192 | 8) 
+@interactions.slash_command(name="setupintervals",description="Définir les intervalles de rappel",scopes=[guild_id_int],
+                            default_member_permissions= 8192) 
 # 8 = Admin et 8192 = manage_messages <- en gros ceux qui ont au moins une des perms peuvent faire la cmd 
 
 async def setupintervals_command(ctx: SlashContext):
@@ -389,7 +387,8 @@ async def on_select_intervals_callback(ctx: ComponentContext):
 #----------------------------#
 ###-------- Backup --------###
 #----------------------------#
-@interactions.slash_command(name="export",description="Exporter une sauvegarde des devoirs",scopes=[guild_id_int],default_member_permissions=8)
+@interactions.slash_command(name="export",description="Exporter une sauvegarde des devoirs",scopes=[guild_id_int],
+                            default_member_permissions=8)
 async def export_command(ctx: SlashContext):
     """Créer une sauvegarde des devoirs enregistrés sur le serveur et envoi la backup en DM"""
     guild_id_str = str(ctx.guild_id)  #

@@ -149,54 +149,108 @@ def time_left(due_date: datetime, now: datetime) -> str:
     return "" # logger.info("Il reste " + ", ".join(parts) + " avant l'échéance.")
 
 async def reminder_loop():
+    """
+    Runs every 60 seconds, checking for overdue or reminder intervals.
+    More logging added to debug issues.
+    """
     tz = pytz.timezone(TIMEZONE)
+
     while True:
+        logger.debug("reminder_loop: 🔄 Starting iteration...")  # DEBUG START
         global_data = load_data(DATA_FILE)
+
         for guild_id, guild_data in global_data["guilds"].items():
+            logger.debug(f"reminder_loop: 🏠 Checking guild {guild_id}...")  # DEBUG GUILD CHECK
+
             settings = guild_data.get("settings", {})
             channel_id = settings.get("reminder_channel_id")
             if not channel_id:
+                logger.debug(f"reminder_loop: ❌ No reminder_channel_id set for guild {guild_id}")  # DEBUG NO CHANNEL
                 continue
+
+            # Fetch intervals or use default
             reminder_intervals = settings.get("reminder_intervals", [14*86400, 7*86400, 3*86400, 1*86400, 0])
             reminder_intervals.sort(reverse=True)
+
             devoirs = guild_data["devoirs"]
             now = datetime.now(tz)
+            logger.debug(f"reminder_loop: 📋 Found {len(devoirs)} devoir(s) for guild {guild_id}.")  # DEBUG DEVOIRS FOUND
+
+            # Process each homework
             for devoir in devoirs[:]:
-                due_date = tz.localize(datetime.strptime(f"{devoir['date']} {devoir['heure']}", "%d-%m-%Y %H:%M:%S"))
+                logger.debug(f"reminder_loop: 📌 Checking devoir: {devoir.get('titre')}")  # DEBUG CHECKING TASK
+
+                try:
+                    due_str = f"{devoir['date']} {devoir['heure']}"
+                    due_date = tz.localize(datetime.strptime(due_str, "%d-%m-%Y %H:%M:%S"))
+                    logger.debug(f"reminder_loop: 🕒 Parsed due_date={due_date}, now={now}")  # DEBUG TIME PARSE
+
+                except ValueError as e:
+                    logger.error(f"reminder_loop: ⚠️ Format de date invalide pour '{devoir['titre']}' : {e}")
+                    continue
+
                 if "reminders_sent" not in devoir:
                     devoir["reminders_sent"] = []
+
                 time_diff = (due_date - now).total_seconds()
+                logger.debug(f"reminder_loop: ⏳ time_diff={time_diff}s for '{devoir['titre']}'")  # DEBUG TIME LEFT
+
                 if time_diff <= 0:
+                    # Overdue => remove from list, send overdue message
+                    logger.debug(f"reminder_loop: 🚨 Devoir '{devoir['titre']}' is overdue!")  # DEBUG OVERDUE
+
                     embed_dict = {
-                        "title": f"Le devoir '{devoir['titre']}' est en retard",
+                        "title": f"⚠️ Le devoir '{devoir['titre']}' est en retard",
                         "color": 0xFF0000,
-                        "description": (f"Ce devoir devait être rendu le {devoir['date']} à {devoir['heure']}.")
+                        "description": f"📅 Ce devoir devait être rendu le {devoir['date']} à {devoir['heure']}.\n❌ Il a été supprimé de la liste."
                     }
+
                     await send_msg(TOKEN, int(channel_id), content="", embed=embed_dict)
                     devoirs.remove(devoir)
+
                     if "event_id" in devoir:
+                        logger.debug(f"reminder_loop: 🗑️ Deleting event {devoir['event_id']}...")  # DEBUG DELETE EVENT
                         await delete_scheduled(TOKEN, int(guild_id), devoir["event_id"])
+                    
                     save_data(global_data, DATA_FILE)
                 else:
+                    # Not overdue => check reminder intervals
+                    logger.debug(f"reminder_loop: ✅ Devoir '{devoir['titre']}' is NOT overdue. Checking intervals...")  # DEBUG INTERVAL CHECK
+
                     for interval in reminder_intervals:
                         if interval in devoir["reminders_sent"]:
+                            logger.debug(f"reminder_loop: ⏭️ Interval {interval}s already sent for '{devoir['titre']}'")  # DEBUG SKIP SENT
                             continue
+
                         reminder_time = due_date - timedelta(seconds=interval)
-                        marge = 300
-                        if now >= reminder_time and (now - reminder_time).total_seconds() <= marge:
+                        margin = 300  # 5 min
+
+                        if now >= reminder_time and (now - reminder_time).total_seconds() <= margin:
+                            logger.debug(f"reminder_loop: 🚀 Sending reminder for interval {interval}s on '{devoir['titre']}'")  # DEBUG SENDING REMINDER
+
+                            # Get time left message
                             left_str = time_left(due_date, now)
+                            logger.debug(f"reminder_loop: 🕒 Time left: {left_str}")  # DEBUG TIME LEFT
+
+                            # Build embed
                             embed_dict = {
-                                "title": "📌 Rappel 📌",
+                                "title": "📌 Rappel de devoir",
                                 "color": 0x00FF00,
                                 "description": f"**Il reste {left_str} avant le rendu suivant :**\n➤ **{devoir['titre']}**"
                             }
+
                             role_id = devoir.get("role_to_ping")
                             mention_str = f"<@&{role_id}>" if role_id else ""
+
                             await send_msg(TOKEN, int(channel_id), content=mention_str, embed=embed_dict)
+
                             devoir["reminders_sent"].append(interval)
                             save_data(global_data, DATA_FILE)
-                            break
+                            break  # Avoid sending multiple reminders at once
+
+        logger.debug("reminder_loop: ⏳ Sleeping 60s before next iteration.")  # DEBUG SLEEP
         await asyncio.sleep(60)
+
 
 # ==================== COMMANDES ====================
 #----------------------------#

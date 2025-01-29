@@ -444,7 +444,7 @@ async def on_select_intervals_callback(ctx: ComponentContext):
 ###-------- Backup --------###
 #----------------------------#
 @interactions.slash_command(name="export",description="Exporter une sauvegarde des devoirs",scopes=[guild_id_int],
-                            default_member_permissions=8)
+                            default_member_permissions=8192)
 async def export_command(ctx: SlashContext):
     """Créer une sauvegarde des devoirs enregistrés sur le serveur et envoi la backup en DM"""
     guild_id_str = str(ctx.guild_id)  #

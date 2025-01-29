@@ -180,6 +180,7 @@ async def reminder_loop():
 
             # Process each homework
             for devoir in devoirs[:]:
+                logger.debug("-----------------------------------------")
                 logger.debug(f"reminder_loop: 📌 Checking devoir: {devoir.get('titre')}")  # DEBUG CHECKING TASK
 
                 try:

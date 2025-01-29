@@ -310,41 +310,41 @@ async def list_command(ctx: SlashContext):
 #----------------------------#
 ###---- Setup Channels ----###
 #----------------------------#
-@interactions.slash_command(name="setupchannel",description="Définir le canal de rappel",scopes=[guild_id_int],
-                            default_member_permissions= 8192)  # 8 = Admin et 8192 = manage_messages <- en gros ceux qui ont au moins une des perms peuvent faire la cmd 
-
-async def setupchannel_command(ctx: SlashContext):
+@interactions.slash_command(
+    name="setupchannel",
+    description="Définir le canal de rappel en spécifiant son nom",
+    scopes=[guild_id_int],
+    default_member_permissions=8192  # Manage Messages permission
+)
+@interactions.slash_option(
+    name="channel_name",
+    description="Nom du canal (ex: devoirs)",
+    required=True,
+    opt_type=OptionType.STRING
+)
+async def setupchannel_command(ctx: SlashContext, channel_name: str):
+    """
+    Commande qui permet de définir le canal des rappels en entrant son nom.
+    Seuls les utilisateurs avec la permission "Gérer les messages" ou "Administrateur" peuvent l'utiliser.
+    """
     raw_channels = await get_channels(TOKEN, ctx.guild_id)
     text_channels = [ch for ch in raw_channels if ch["type"] == 0]
-    if not text_channels:
-        return await ctx.send("Aucun canal texte trouvé.", ephemeral=True)
 
-    select_options = [
-        StringSelectOption(label=ch["name"], value=str(ch["id"]))
-        for ch in text_channels
-    ]
-    menu = StringSelectMenu(
-        *select_options,
-        custom_id="select_reminder_channel",
-        placeholder="Choisir un canal pour les rappels",
-        max_values=1
-    )
-    await ctx.send(
-        "Sélectionnez un canal de rappel :",
-        components=[interactions.ActionRow(menu)],
-        ephemeral=True
-    )
+    # trouver le channel
+    matching_channel = next((ch for ch in text_channels if ch["name"].lower() == channel_name.lower()), None)
 
-@interactions.component_callback("select_reminder_channel")
-async def on_select_reminder_channel(ctx: ComponentContext):
-    channel_id = int(ctx.values[0])
+    if not matching_channel:
+        return await ctx.send(f"❌ Aucun canal trouvé avec le nom `{channel_name}`.", ephemeral=True)
+
+    # save l'ID du chann dans le json
     global_data = load_data(DATA_FILE)
     guild_id_str = str(ctx.guild_id)
     guild_data = global_data["guilds"].setdefault(guild_id_str, {"devoirs": [], "settings": {}})
-    guild_data["settings"]["reminder_channel_id"] = channel_id
+    guild_data["settings"]["reminder_channel_id"] = matching_channel["id"]
     save_data(global_data, DATA_FILE)
-    await ctx.send(f"Le canal de rappel est défini sur <#{channel_id}>", ephemeral=True)
 
+    await ctx.send(f"✅ Le canal des rappels est maintenant <#{matching_channel['id']}>", ephemeral=True)
+    
 #----------------------------#
 ###--- Setup intervals ----###
 #----------------------------#

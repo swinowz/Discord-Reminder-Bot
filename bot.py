@@ -228,17 +228,15 @@ async def reminder_loop():
                         margin = 300  # 5 min
 
                         if now >= reminder_time and (now - reminder_time).total_seconds() <= margin:
-                            logger.debug(f"reminder_loop: 🚀 Sending reminder for interval {interval}s on '{devoir['titre']}'")  # DEBUG SENDING REMINDER
-
-                            # Get time left message
-                            left_str = time_left(due_date, now)
-                            logger.debug(f"reminder_loop: 🕒 Time left: {left_str}")  # DEBUG TIME LEFT
-
-                            # Build embed
+                            if interval >= 86400:
+                                time_left_str = f"{interval // 86400} jour(s)"
+                            else:
+                                time_left_str = f"{interval // 3600} heure(s)"
+                    
                             embed_dict = {
-                                "title": "📌 Rappel de devoir",
+                                "title": "📌 Rappel 📌",
                                 "color": 0x00FF00,
-                                "description": f"**Il reste {left_str} avant le rendu suivant :**\n➤ **{devoir['titre']}**"
+                                "description": f"**Il reste {time_left_str} avant le rendu suivant :**\n➤ **{devoir['titre']}**"
                             }
 
                             role_id = devoir.get("role_to_ping")

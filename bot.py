@@ -25,7 +25,8 @@ from dotenv import load_dotenv
 #Activation des logs 
 logging.basicConfig()
 logger = logging.getLogger("MyLogger")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
+
 
 #Récup des variables
 load_dotenv()
@@ -156,6 +157,7 @@ async def reminder_loop():
     tz = pytz.timezone(TIMEZONE)
 
     while True:
+        logger.debug("================================================================")
         logger.debug("reminder_loop: 🔄 Starting iteration...")  # DEBUG START
         global_data = load_data(DATA_FILE)
 
@@ -249,6 +251,7 @@ async def reminder_loop():
                             break  # Avoid sending multiple reminders at once
 
         logger.debug("reminder_loop: ⏳ Sleeping 60s before next iteration.")  # DEBUG SLEEP
+        logger.debug("================================================================")
         await asyncio.sleep(60)
 
 

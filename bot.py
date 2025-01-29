@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 #Activation des logs 
 logging.basicConfig()
 logger = logging.getLogger("MyLogger")
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 
 #Récup des variables

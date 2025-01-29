@@ -186,9 +186,9 @@ async def reminder_loop():
                         if now >= reminder_time and (now - reminder_time).total_seconds() <= marge:
                             left_str = time_left(due_date, now)
                             embed_dict = {
-                                "title": f"Rappel : '{devoir['titre']}'",
+                                "title": "📌 Rappel 📌",
                                 "color": 0x00FF00,
-                                "description": left_str
+                                "description": f"**Il reste {left_str} avant le rendu suivant :**\n➤ **{devoir['titre']}**"
                             }
                             role_id = devoir.get("role_to_ping")
                             mention_str = f"<@&{role_id}>" if role_id else ""

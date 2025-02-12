@@ -1,4 +1,4 @@
-aiohttp==3.8.5
-interactions.py==4.3.2
-python-dotenv==1.0.0
-pytz==2023.3
+aiohttp
+interactions.py
+python-dotenv
+pytz

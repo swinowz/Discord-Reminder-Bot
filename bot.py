@@ -27,6 +27,7 @@ logging.basicConfig()
 logger = logging.getLogger("MyLogger")
 logger.setLevel(logging.DEBUG)
 
+
 #Récup des variables
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -149,9 +150,17 @@ def time_left(due_date: datetime, now: datetime) -> str:
     return "" # logger.info("Il reste " + ", ".join(parts) + " avant l'échéance.")
 
 async def reminder_loop():
+    """
+    Runs every 60 seconds, checking for overdue or reminder intervals.
+    More logging added to debug issues.
+    """
     tz = pytz.timezone(TIMEZONE)
+
     while True:
+        logger.debug("================================================================")
+        logger.debug("reminder_loop: 🔄 Starting iteration...")  # DEBUG START
         global_data = load_data(DATA_FILE)
+
         for guild_id, guild_data in global_data["guilds"].items():
             now = datetime.now(tz)
             devoirs = guild_data["devoirs"]
@@ -171,12 +180,16 @@ async def reminder_loop():
                         "color": 0xFF0000,
                         "description": f"Ce devoir devait être rendu le {devoir['date']} à {devoir['heure']}."
                     }
+
                     await send_msg(TOKEN, int(channel_id), content="", embed=embed_dict)
                     
                     # Remove from list & delete event
                     devoirs.remove(devoir)
+
                     if "event_id" in devoir:
+                        logger.debug(f"reminder_loop: 🗑️ Deleting event {devoir['event_id']}...")  # DEBUG DELETE EVENT
                         await delete_scheduled(TOKEN, int(guild_id), devoir["event_id"])
+                    
                     save_data(global_data, DATA_FILE)
 
                 else:
@@ -196,16 +209,20 @@ async def reminder_loop():
                                 "description": f"Ce devoir est prévu pour le {devoir['date']} à {devoir['heure']}."
                             }
 
+
                             role_id = devoir.get("role_to_ping")
                             mention_str = f"<@&{role_id}>" if role_id else ""
 
+
                             await send_msg(TOKEN, int(channel_id), content=mention_str, embed=embed_dict)
+
 
                             devoir["reminders_sent"].append(interval)
                             save_data(global_data, DATA_FILE)
                             break  # Stop checking once a reminder is sent
 
         await asyncio.sleep(60)  # Check every minute
+
 
 
 
@@ -363,7 +380,7 @@ async def on_select_intervals_callback(ctx: ComponentContext):
 ###-------- Backup --------###
 #----------------------------#
 @interactions.slash_command(name="export",description="Exporter une sauvegarde des devoirs",scopes=[guild_id_int],
-                            default_member_permissions=8)
+                            default_member_permissions=8192)
 async def export_command(ctx: SlashContext):
     """Créer une sauvegarde des devoirs enregistrés sur le serveur et envoi la backup en DM"""
     guild_id_str = str(ctx.guild_id)  #

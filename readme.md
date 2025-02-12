@@ -31,7 +31,8 @@ Enable the use of multiple channels ( to go with multi-roles which is already in
   - If only the hour and minute is provided, auto-complete to `<hour>:<minute>:00`.
 - ⚖️ **Command-Level Permissions**:   
 Add the ability to control permissions for each command directly within the bot.
-
+- ❌ MASS remove Reminders ❌
+  - For example, remove every reminder starting with .... ( practical use exemple : everything that start with TEST, DEBUG etc ) 
 ---
 
 # 🎉 Full Revamp Discord Reminder Bot V2.0.0

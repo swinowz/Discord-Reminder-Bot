@@ -23,7 +23,7 @@
 Add functionality to import reminders from a JSON file.
 - 📝 **Optional Description Field**:   
 Allow assignments to have an optional description for more details.
-- 📢 **Multi-Channel Support**:  
+- 📢 **Multi-Channel Support** ✅✅ -- Done 12/02/2025 -- ✅✅:  
 Enable the use of multiple channels ( to go with multi-roles which is already in place )
 - ⏰ **Smart Time Defaults**:  
   - If no time is specified, default to `00:00:01`.

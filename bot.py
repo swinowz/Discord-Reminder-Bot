@@ -153,89 +153,102 @@ async def reminder_loop():
     while True:
         global_data = load_data(DATA_FILE)
         for guild_id, guild_data in global_data["guilds"].items():
-            settings = guild_data.get("settings", {})
-            channel_id = settings.get("reminder_channel_id")
-            if not channel_id:
-                continue
-            reminder_intervals = settings.get("reminder_intervals", [14*86400, 7*86400, 3*86400, 1*86400, 0])
-            reminder_intervals.sort(reverse=True)
-            devoirs = guild_data["devoirs"]
             now = datetime.now(tz)
-            for devoir in devoirs[:]:
+            devoirs = guild_data["devoirs"]
+
+            for devoir in devoirs[:]:  # Iterate over a copy to allow removal
                 due_date = tz.localize(datetime.strptime(f"{devoir['date']} {devoir['heure']}", "%d-%m-%Y %H:%M:%S"))
-                if "reminders_sent" not in devoir:
-                    devoir["reminders_sent"] = []
-                time_diff = (due_date - now).total_seconds()
-                if time_diff <= 0:
+                channel_id = devoir.get("channel_id")
+
+                if not channel_id:
+                    logger.warning(f"Missing channel_id for '{devoir['titre']}', skipping reminder.")
+                    continue  # Skip if no channel assigned
+
+                if now >= due_date:
+                    # Send overdue reminder
                     embed_dict = {
-                        "title": f"Le devoir '{devoir['titre']}' est en retard",
+                        "title": f"🚨 Le devoir '{devoir['titre']}' est en retard 🚨",
                         "color": 0xFF0000,
-                        "description": (f"Ce devoir devait être rendu le {devoir['date']} à {devoir['heure']}.")
+                        "description": f"Ce devoir devait être rendu le {devoir['date']} à {devoir['heure']}."
                     }
                     await send_msg(TOKEN, int(channel_id), content="", embed=embed_dict)
+                    
+                    # Remove from list & delete event
                     devoirs.remove(devoir)
                     if "event_id" in devoir:
                         await delete_scheduled(TOKEN, int(guild_id), devoir["event_id"])
                     save_data(global_data, DATA_FILE)
+
                 else:
-                    for interval in reminder_intervals:
+                    # Check reminders before the due date
+                    reminder_intervals = guild_data.get("settings", {}).get("reminder_intervals", [86400, 3600, 600])
+                    for interval in sorted(reminder_intervals, reverse=True):
                         if interval in devoir["reminders_sent"]:
-                            continue
+                            continue  # Skip if already sent
+
                         reminder_time = due_date - timedelta(seconds=interval)
-                        marge = 300
+                        marge = 300  # Allow 5 min margin
+
                         if now >= reminder_time and (now - reminder_time).total_seconds() <= marge:
-                            left_str = time_left(due_date, now)
                             embed_dict = {
-                                "title": f"Rappel : '{devoir['titre']}'",
+                                "title": f"📢 Rappel : '{devoir['titre']}' 📢",
                                 "color": 0x00FF00,
-                                "description": left_str
+                                "description": f"Ce devoir est prévu pour le {devoir['date']} à {devoir['heure']}."
                             }
+
                             role_id = devoir.get("role_to_ping")
                             mention_str = f"<@&{role_id}>" if role_id else ""
+
                             await send_msg(TOKEN, int(channel_id), content=mention_str, embed=embed_dict)
+
                             devoir["reminders_sent"].append(interval)
                             save_data(global_data, DATA_FILE)
-                            break
-        await asyncio.sleep(60)
+                            break  # Stop checking once a reminder is sent
+
+        await asyncio.sleep(60)  # Check every minute
+
+
 
 # ==================== COMMANDES ====================
 #----------------------------#
 ###--------  Add  ---------###
 #----------------------------#
-@interactions.slash_command(name="add",    description="Ajouter un devoir et créer un événement planifié",   scopes=[guild_id_int])
-@interactions.slash_option( name="date",   description="Date (DD-MM-YYYY)",   required=True, opt_type=OptionType.STRING)
-@interactions.slash_option( name="heure",  description="Heure (HH:MM:SS)",    required=True, opt_type=OptionType.STRING)
-@interactions.slash_option( name="titre",  description="Titre du devoir",     required=True, opt_type=OptionType.STRING)
-@interactions.slash_option( name="role",   description="Nom du rôle à pinger",required=True, opt_type=OptionType.STRING)
+@interactions.slash_command(name="add", description="Ajouter un devoir et spécifier un canal de rappel", scopes=[guild_id_int])
+@interactions.slash_option(name="date", description="Date (DD-MM-YYYY)", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="heure", description="Heure (HH:MM:SS)", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="titre", description="Titre du devoir", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="role", description="Nom du rôle à pinger", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="channel", description="Canal pour le rappel", required=True, opt_type=OptionType.STRING)
 
-async def add_command(ctx: SlashContext, date: str, heure: str, titre: str, role: str):
+async def add_command(ctx: SlashContext, date: str, heure: str, titre: str, role: str, channel: str):
     global_data = load_data(DATA_FILE)
     guild_id_str = str(ctx.guild_id)
     guild_data = global_data["guilds"].setdefault(guild_id_str, {"devoirs": [], "settings": {}})
     tz = pytz.timezone(TIMEZONE)
 
     try:
-        # Convertir la date et l'heure en un objet datetime
-        due_date = datetime.strptime(f"{date} {heure}", "%d-%m-%Y %H:%M:%S")
-        due_date = tz.localize(due_date)
-
-        # verif si la date est dans le passé
-        now = datetime.now(tz)
-        if due_date < now:
-            return await ctx.send("🚫 La date et l'heure fournies sont déjà dans le passé. Veuillez entrer une date future 🚫", ephemeral=True)
-
+        due_date = tz.localize(datetime.strptime(f"{date} {heure}", "%d-%m-%Y %H:%M:%S"))
+        if due_date < datetime.now(tz):
+            return await ctx.send("🚫 La date et l'heure sont déjà passées. 🚫", ephemeral=True)
     except ValueError:
         return await ctx.send("Format invalide. Utilisez `DD-MM-YYYY HH:MM:SS`.", ephemeral=True)
 
-    # verif si le rôle existe
+    channels_json = await get_channels(TOKEN, ctx.guild_id)
+    channel_id = next((c["id"] for c in channels_json if c["name"] == channel and c["type"] == 0), None)
+
+    if not channel_id:
+        return await ctx.send(f"🚫 Canal `{channel}` introuvable ou non textuel 🚫", ephemeral=True)
+
+    # Fetch role ID
     roles_json = await get_roles(TOKEN, ctx.guild_id)
     role_id = next((r["id"] for r in roles_json if r["name"] == role), None)
     if not role_id:
         return await ctx.send(f"🚫 Rôle `{role}` introuvable 🚫", ephemeral=True)
 
-    # Créer l'événement programmé
+    # Create the scheduled event
     start_iso = due_date.isoformat()
     end_iso = (due_date + timedelta(hours=1)).isoformat()
+
     try:
         event_data = await create_scheduled(TOKEN, ctx.guild_id, titre, start_iso, end_iso)
         event_id = event_data.get("id")
@@ -243,21 +256,20 @@ async def add_command(ctx: SlashContext, date: str, heure: str, titre: str, role
         logger.error(f"Erreur lors de la création de l'événement: {e}")
         event_id = None
 
-    # Ajouter le devoir dans les données
     devoir = {
         "date": date,
         "heure": heure,
         "titre": titre,
-        "guild_id": ctx.guild_id,
+        "channel_id": channel_id,
         "role_to_ping": role_id,
-        "reminders_sent": [],
-        "event_id": event_id
+        "event_id": event_id,
+        "reminders_sent": []
     }
+
     guild_data["devoirs"].append(devoir)
     save_data(global_data, DATA_FILE)
 
-    await ctx.send("✅ Devoir ajouté avec succès ✅", ephemeral=True)
-
+    await ctx.send("✅ Devoir ajouté avec succès et événement créé ✅", ephemeral=True)
 
 #----------------------------#
 ###-------- Delete --------###
@@ -307,43 +319,6 @@ async def list_command(ctx: SlashContext):
     lines = [f"- **{d['titre']}** (Date: {d['date']} {d['heure']}, Rôle: <@&{d['role_to_ping']}>)" for d in devoirs]
     await ctx.send("Devoirs enregistrés:\n" + "\n".join(lines), ephemeral=True)
 
-#----------------------------#
-###---- Setup Channels ----###
-#----------------------------#
-@interactions.slash_command(name="setupchannel",description="Définir le canal de rappel",scopes=[guild_id_int],
-                            default_member_permissions= 8192)  # 8 = Admin et 8192 = manage_messages <- en gros ceux qui ont au moins une des perms peuvent faire la cmd 
-
-async def setupchannel_command(ctx: SlashContext):
-    raw_channels = await get_channels(TOKEN, ctx.guild_id)
-    text_channels = [ch for ch in raw_channels if ch["type"] == 0]
-    if not text_channels:
-        return await ctx.send("Aucun canal texte trouvé.", ephemeral=True)
-
-    select_options = [
-        StringSelectOption(label=ch["name"], value=str(ch["id"]))
-        for ch in text_channels
-    ]
-    menu = StringSelectMenu(
-        *select_options,
-        custom_id="select_reminder_channel",
-        placeholder="Choisir un canal pour les rappels",
-        max_values=1
-    )
-    await ctx.send(
-        "Sélectionnez un canal de rappel :",
-        components=[interactions.ActionRow(menu)],
-        ephemeral=True
-    )
-
-@interactions.component_callback("select_reminder_channel")
-async def on_select_reminder_channel(ctx: ComponentContext):
-    channel_id = int(ctx.values[0])
-    global_data = load_data(DATA_FILE)
-    guild_id_str = str(ctx.guild_id)
-    guild_data = global_data["guilds"].setdefault(guild_id_str, {"devoirs": [], "settings": {}})
-    guild_data["settings"]["reminder_channel_id"] = channel_id
-    save_data(global_data, DATA_FILE)
-    await ctx.send(f"Le canal de rappel est défini sur <#{channel_id}>", ephemeral=True)
 
 #----------------------------#
 ###--- Setup intervals ----###

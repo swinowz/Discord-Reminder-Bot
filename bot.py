@@ -166,7 +166,7 @@ async def reminder_loop():
             devoirs = guild_data["devoirs"]
 
             for devoir in devoirs[:]:  # Iterate over a copy to allow removal
-                due_date = tz.localize(datetime.strptime(f"{devoir['date']} {devoir['heure']}", "%d-%m-%Y %H:%M:%S"))
+                due_date = tz.localize(datetime.strptime(f"{devoir['date']} {devoir['heure']}", "%d/%m/%Y %H:%M:%S"))
                 channel_id = devoir.get("channel_id")
 
                 if not channel_id:
@@ -231,7 +231,7 @@ async def reminder_loop():
 ###--------  Add  ---------###
 #----------------------------#
 @interactions.slash_command(name="add", description="Ajouter un devoir et spécifier un canal de rappel", scopes=[guild_id_int])
-@interactions.slash_option(name="date", description="Date (DD-MM-YYYY)", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="date", description="Date (DD/MM/YYYY)", required=True, opt_type=OptionType.STRING)
 @interactions.slash_option(name="heure", description="Heure (HH:MM:SS)", required=True, opt_type=OptionType.STRING)
 @interactions.slash_option(name="titre", description="Titre du devoir", required=True, opt_type=OptionType.STRING)
 @interactions.slash_option(name="role", description="Nom du rôle à pinger", required=True, opt_type=OptionType.STRING)
@@ -244,11 +244,11 @@ async def add_command(ctx: SlashContext, date: str, heure: str, titre: str, role
     tz = pytz.timezone(TIMEZONE)
 
     try:
-        due_date = tz.localize(datetime.strptime(f"{date} {heure}", "%d-%m-%Y %H:%M:%S"))
+        due_date = tz.localize(datetime.strptime(f"{date} {heure}", "%d/%m/%Y %H:%M:%S"))
         if due_date < datetime.now(tz):
             return await ctx.send("🚫 La date et l'heure sont déjà passées. 🚫", ephemeral=True)
     except ValueError:
-        return await ctx.send("Format invalide. Utilisez `DD-MM-YYYY HH:MM:SS`.", ephemeral=True)
+        return await ctx.send("Format invalide. Utilisez `DD/MM/YYYY HH:MM:SS`.", ephemeral=True)
 
     channels_json = await get_channels(TOKEN, ctx.guild_id)
     channel_id = next((c["id"] for c in channels_json if c["name"] == channel and c["type"] == 0), None)

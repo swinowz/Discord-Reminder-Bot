@@ -60,6 +60,34 @@ def save_data(data: dict, data_file: str):
     with open(data_file, "w") as f:
         json.dump(data, f, indent=4)
 
+# ==================== UTILS ====================
+def parse_time_str(time_str: str) -> str:
+    """Return a HH:MM:SS string applying smart defaults"""
+    if not time_str:
+        return "00:00:01"
+    parts = time_str.split(":")
+    if len(parts) == 1:
+        return f"{parts[0].zfill(2)}:00:00"
+    if len(parts) == 2:
+        return f"{parts[0].zfill(2)}:{parts[1].zfill(2)}:00"
+    if len(parts) == 3:
+        return ":".join(p.zfill(2) for p in parts[:3])
+    raise ValueError("Invalid time format")
+
+
+def check_command_permission(ctx: SlashContext, command: str) -> bool:
+    """Check if the user has permission for the command"""
+    global_data = load_data(DATA_FILE)
+    guild_id = str(ctx.guild_id)
+    guild_data = global_data["guilds"].setdefault(guild_id, {"devoirs": [], "settings": {}})
+    perms = guild_data["settings"].get("command_permissions", {}).get(command)
+    if perms is None:
+        return True
+    member_perms = getattr(ctx.author, "permissions", 0)
+    if hasattr(member_perms, "value"):
+        member_perms = member_perms.value
+    return (member_perms & perms) == perms
+
 # ==================== RAW HTTP HELPERS ====================
 # Fonctions qui font des appels sur l'API discord (récupérer des rôles, créer des événements etc )
 
@@ -180,6 +208,12 @@ async def reminder_loop():
                         "color": 0xFF0000,
                         "description": f"Ce devoir devait être rendu le {devoir['date']} à {devoir['heure']}."
                     }
+                    if devoir.get("description"):
+                        embed_dict.setdefault("fields", []).append({
+                            "name": "Description",
+                            "value": devoir["description"],
+                            "inline": False
+                        })
 
                     await send_msg(TOKEN, int(channel_id), content="", embed=embed_dict)
                     
@@ -208,6 +242,12 @@ async def reminder_loop():
                                 "color": 0x00FF00,
                                 "description": f"Ce devoir est prévu pour le {devoir['date']} à {devoir['heure']}."
                             }
+                            if devoir.get("description"):
+                                embed_dict.setdefault("fields", []).append({
+                                    "name": "Description",
+                                    "value": devoir["description"],
+                                    "inline": False
+                                })
 
 
                             role_id = devoir.get("role_to_ping")
@@ -232,23 +272,27 @@ async def reminder_loop():
 #----------------------------#
 @interactions.slash_command(name="add", description="Ajouter un devoir et spécifier un canal de rappel", scopes=[guild_id_int])
 @interactions.slash_option(name="date", description="Date (DD/MM/YYYY)", required=True, opt_type=OptionType.STRING)
-@interactions.slash_option(name="heure", description="Heure (HH:MM:SS)", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="heure", description="Heure (HH:MM[:SS])", required=False, opt_type=OptionType.STRING)
 @interactions.slash_option(name="titre", description="Titre du devoir", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="description", description="Description du devoir", required=False, opt_type=OptionType.STRING)
 @interactions.slash_option(name="role", description="Nom du rôle à pinger", required=True, opt_type=OptionType.STRING)
 @interactions.slash_option(name="channel", description="Canal pour le rappel", required=True, opt_type=OptionType.STRING)
 
-async def add_command(ctx: SlashContext, date: str, heure: str, titre: str, role: str, channel: str):
+async def add_command(ctx: SlashContext, date: str, heure: str | None, titre: str, description: str | None, role: str, channel: str):
+    if not check_command_permission(ctx, "add"):
+        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     global_data = load_data(DATA_FILE)
     guild_id_str = str(ctx.guild_id)
     guild_data = global_data["guilds"].setdefault(guild_id_str, {"devoirs": [], "settings": {}})
     tz = pytz.timezone(TIMEZONE)
 
+    heure = parse_time_str(heure or "")
     try:
         due_date = tz.localize(datetime.strptime(f"{date} {heure}", "%d/%m/%Y %H:%M:%S"))
         if due_date < datetime.now(tz):
             return await ctx.send("🚫 La date et l'heure sont déjà passées. 🚫", ephemeral=True)
     except ValueError:
-        return await ctx.send("Format invalide. Utilisez `DD/MM/YYYY HH:MM:SS`.", ephemeral=True)
+        return await ctx.send("Format invalide. Utilisez `DD/MM/YYYY HH:MM[:SS]`.", ephemeral=True)
 
     channels_json = await get_channels(TOKEN, ctx.guild_id)
     channel_id = next((c["id"] for c in channels_json if c["name"] == channel and c["type"] == 0), None)
@@ -277,6 +321,7 @@ async def add_command(ctx: SlashContext, date: str, heure: str, titre: str, role
         "date": date,
         "heure": heure,
         "titre": titre,
+        "description": description,
         "channel_id": channel_id,
         "role_to_ping": role_id,
         "event_id": event_id,
@@ -303,6 +348,8 @@ async def add_command(ctx: SlashContext, date: str, heure: str, titre: str, role
     opt_type=OptionType.STRING
 )
 async def delete_command(ctx: SlashContext, title: str):
+    if not check_command_permission(ctx, "delete"):
+        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     global_data = load_data(DATA_FILE)
     guild_id_str = str(ctx.guild_id)
     guild_data = global_data["guilds"].get(guild_id_str, {"devoirs": [], "settings": {}})
@@ -327,13 +374,18 @@ async def delete_command(ctx: SlashContext, title: str):
     scopes=[guild_id_int]
 )
 async def list_command(ctx: SlashContext):
+    if not check_command_permission(ctx, "list"):
+        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     global_data = load_data(DATA_FILE)
     guild_id_str = str(ctx.guild_id)
     guild_data = global_data["guilds"].get(guild_id_str, {"devoirs": [], "settings": {}})
     devoirs = guild_data["devoirs"]
     if not devoirs:
         return await ctx.send("Aucun devoir n'est enregistré pour ce serveur.", ephemeral=True)
-    lines = [f"- **{d['titre']}** (Date: {d['date']} {d['heure']}, Rôle: <@&{d['role_to_ping']}>)" for d in devoirs]
+    lines = []
+    for d in devoirs:
+        desc = f" - {d['description']}" if d.get('description') else ""
+        lines.append(f"- **{d['titre']}**{desc} (Date: {d['date']} {d['heure']}, Rôle: <@&{d['role_to_ping']}>)")
     await ctx.send("Devoirs enregistrés:\n" + "\n".join(lines), ephemeral=True)
 
 
@@ -345,6 +397,8 @@ async def list_command(ctx: SlashContext):
 # 8 = Admin et 8192 = manage_messages <- en gros ceux qui ont au moins une des perms peuvent faire la cmd 
 
 async def setupintervals_command(ctx: SlashContext):
+    if not check_command_permission(ctx, "setupintervals"):
+        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     """"
     Commande pour définir les intervalles de rappel (besoin des perms "Gérer les messages" ou "Administrateur")
     """
@@ -382,6 +436,8 @@ async def on_select_intervals_callback(ctx: ComponentContext):
 @interactions.slash_command(name="export",description="Exporter une sauvegarde des devoirs",scopes=[guild_id_int],
                             default_member_permissions=8192)
 async def export_command(ctx: SlashContext):
+    if not check_command_permission(ctx, "export"):
+        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     """Créer une sauvegarde des devoirs enregistrés sur le serveur et envoi la backup en DM"""
     guild_id_str = str(ctx.guild_id)  #
     global_data = load_data(DATA_FILE)  # chargement du fichier json entier
@@ -411,6 +467,66 @@ async def export_command(ctx: SlashContext):
 
     # Clean up the temporary file
     os.remove(backup)
+
+#----------------------------#
+###-------- Import --------###
+#----------------------------#
+@interactions.slash_command(name="import", description="Importer des rappels depuis un JSON", scopes=[guild_id_int], default_member_permissions=8192)
+@interactions.slash_option(name="json_file", description="Fichier JSON", required=True, opt_type=OptionType.ATTACHMENT)
+async def import_command(ctx: SlashContext, json_file):
+    if not check_command_permission(ctx, "import"):
+        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
+    if not str(json_file.filename).endswith(".json"):
+        return await ctx.send("Le fichier doit être en JSON", ephemeral=True)
+    content = await json_file.read()
+    try:
+        imported = json.loads(content.decode())
+    except Exception:
+        return await ctx.send("JSON invalide", ephemeral=True)
+    global_data = load_data(DATA_FILE)
+    guild_id_str = str(ctx.guild_id)
+    global_data["guilds"][guild_id_str] = imported
+    save_data(global_data, DATA_FILE)
+    await ctx.send("Données importées", ephemeral=True)
+
+#----------------------------#
+###------ Set Perms --------###
+#----------------------------#
+@interactions.slash_command(name="setperm", description="Définir la permission d'une commande", scopes=[guild_id_int], default_member_permissions=8192)
+@interactions.slash_option(name="commande", description="Nom de la commande", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="bits", description="Bits de permission", required=True, opt_type=OptionType.INTEGER)
+async def setperm_command(ctx: SlashContext, commande: str, bits: int):
+    if not check_command_permission(ctx, "setperm"):
+        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
+    global_data = load_data(DATA_FILE)
+    guild_id = str(ctx.guild_id)
+    guild_data = global_data["guilds"].setdefault(guild_id, {"devoirs": [], "settings": {}})
+    perms = guild_data["settings"].setdefault("command_permissions", {})
+    perms[commande] = bits
+    save_data(global_data, DATA_FILE)
+    await ctx.send(f"Permission pour {commande} enregistrée", ephemeral=True)
+
+#----------------------------#
+###----- Mass Delete -------###
+#----------------------------#
+@interactions.slash_command(name="massdelete", description="Supprimer en masse par préfixe", scopes=[guild_id_int], default_member_permissions=8192)
+@interactions.slash_option(name="prefix", description="Préfixe du titre", required=True, opt_type=OptionType.STRING)
+async def massdelete_command(ctx: SlashContext, prefix: str):
+    if not check_command_permission(ctx, "massdelete"):
+        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
+    global_data = load_data(DATA_FILE)
+    guild_id = str(ctx.guild_id)
+    guild_data = global_data["guilds"].get(guild_id, {"devoirs": [], "settings": {}})
+    devoirs = guild_data.get("devoirs", [])
+    to_remove = [d for d in list(devoirs) if d["titre"].startswith(prefix)]
+    if not to_remove:
+        return await ctx.send("Aucun devoir ne correspond", ephemeral=True)
+    for d in to_remove:
+        if "event_id" in d:
+            await delete_scheduled(TOKEN, ctx.guild_id, d["event_id"])
+        devoirs.remove(d)
+    save_data(global_data, DATA_FILE)
+    await ctx.send(f"{len(to_remove)} devoirs supprimés", ephemeral=True)
 
 
 # ==================== MAIN ====================

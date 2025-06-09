@@ -60,6 +60,20 @@ def save_data(data: dict, data_file: str):
     with open(data_file, "w") as f:
         json.dump(data, f, indent=4)
 
+# ==================== UTILS ====================
+def parse_time_str(time_str: str) -> str:
+    """Return a HH:MM:SS string applying smart defaults"""
+    if not time_str:
+        return "00:00:01"
+    parts = time_str.split(":")
+    if len(parts) == 1:
+        return f"{parts[0].zfill(2)}:00:00"
+    if len(parts) == 2:
+        return f"{parts[0].zfill(2)}:{parts[1].zfill(2)}:00"
+    if len(parts) == 3:
+        return ":".join(p.zfill(2) for p in parts[:3])
+    raise ValueError("Invalid time format")
+
 # ==================== RAW HTTP HELPERS ====================
 # Fonctions qui font des appels sur l'API discord (récupérer des rôles, créer des événements etc )
 
@@ -180,6 +194,12 @@ async def reminder_loop():
                         "color": 0xFF0000,
                         "description": f"Ce devoir devait être rendu le {devoir['date']} à {devoir['heure']}."
                     }
+                    if devoir.get("description"):
+                        embed_dict.setdefault("fields", []).append({
+                            "name": "Description",
+                            "value": devoir["description"],
+                            "inline": False
+                        })
 
                     await send_msg(TOKEN, int(channel_id), content="", embed=embed_dict)
                     
@@ -208,6 +228,12 @@ async def reminder_loop():
                                 "color": 0x00FF00,
                                 "description": f"Ce devoir est prévu pour le {devoir['date']} à {devoir['heure']}."
                             }
+                            if devoir.get("description"):
+                                embed_dict.setdefault("fields", []).append({
+                                    "name": "Description",
+                                    "value": devoir["description"],
+                                    "inline": False
+                                })
 
 
                             role_id = devoir.get("role_to_ping")
@@ -232,23 +258,33 @@ async def reminder_loop():
 #----------------------------#
 @interactions.slash_command(name="add", description="Ajouter un devoir et spécifier un canal de rappel", scopes=[guild_id_int])
 @interactions.slash_option(name="date", description="Date (DD/MM/YYYY)", required=True, opt_type=OptionType.STRING)
-@interactions.slash_option(name="heure", description="Heure (HH:MM:SS)", required=True, opt_type=OptionType.STRING)
 @interactions.slash_option(name="titre", description="Titre du devoir", required=True, opt_type=OptionType.STRING)
 @interactions.slash_option(name="role", description="Nom du rôle à pinger", required=True, opt_type=OptionType.STRING)
 @interactions.slash_option(name="channel", description="Canal pour le rappel", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="heure", description="Heure (HH:MM[:SS])", required=False, opt_type=OptionType.STRING)
+@interactions.slash_option(name="description", description="Description du devoir", required=False, opt_type=OptionType.STRING)
 
-async def add_command(ctx: SlashContext, date: str, heure: str, titre: str, role: str, channel: str):
+async def add_command(
+    ctx: SlashContext,
+    date: str,
+    titre: str,
+    role: str,
+    channel: str,
+    heure: str | None = None,
+    description: str | None = None,
+):
     global_data = load_data(DATA_FILE)
     guild_id_str = str(ctx.guild_id)
     guild_data = global_data["guilds"].setdefault(guild_id_str, {"devoirs": [], "settings": {}})
     tz = pytz.timezone(TIMEZONE)
 
+    heure = parse_time_str(heure or "")
     try:
         due_date = tz.localize(datetime.strptime(f"{date} {heure}", "%d/%m/%Y %H:%M:%S"))
         if due_date < datetime.now(tz):
             return await ctx.send("🚫 La date et l'heure sont déjà passées. 🚫", ephemeral=True)
     except ValueError:
-        return await ctx.send("Format invalide. Utilisez `DD/MM/YYYY HH:MM:SS`.", ephemeral=True)
+        return await ctx.send("Format invalide. Utilisez `DD/MM/YYYY HH:MM[:SS]`.", ephemeral=True)
 
     channels_json = await get_channels(TOKEN, ctx.guild_id)
     channel_id = next((c["id"] for c in channels_json if c["name"] == channel and c["type"] == 0), None)
@@ -277,6 +313,7 @@ async def add_command(ctx: SlashContext, date: str, heure: str, titre: str, role
         "date": date,
         "heure": heure,
         "titre": titre,
+        "description": description,
         "channel_id": channel_id,
         "role_to_ping": role_id,
         "event_id": event_id,
@@ -287,6 +324,61 @@ async def add_command(ctx: SlashContext, date: str, heure: str, titre: str, role
     save_data(global_data, DATA_FILE)
 
     await ctx.send("✅ Devoir ajouté avec succès et événement créé ✅", ephemeral=True)
+#----------------------------#
+###------- TestAdd ---------###
+#----------------------------#
+@interactions.slash_command(name="testadd", description="Ajouter des devoirs de test", scopes=[guild_id_int])
+@interactions.slash_option(name="channel", description="Canal pour le rappel", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="role", description="Nom du rôle à pinger", required=True, opt_type=OptionType.STRING)
+async def testadd_command(ctx: SlashContext, channel: str, role: str):
+    """Ajoute trois devoirs de test avec des échéances 1h, 1j et 3j."""
+    tz = pytz.timezone(TIMEZONE)
+    global_data = load_data(DATA_FILE)
+    guild_id_str = str(ctx.guild_id)
+    guild_data = global_data["guilds"].setdefault(guild_id_str, {"devoirs": [], "settings": {}})
+
+    channels_json = await get_channels(TOKEN, ctx.guild_id)
+    channel_id = next((c["id"] for c in channels_json if c["name"] == channel and c["type"] == 0), None)
+    if not channel_id:
+        return await ctx.send(f"🚫 Canal `{channel}` introuvable ou non textuel 🚫", ephemeral=True)
+
+    roles_json = await get_roles(TOKEN, ctx.guild_id)
+    role_id = next((r["id"] for r in roles_json if r["name"] == role), None)
+    if not role_id:
+        return await ctx.send(f"🚫 Rôle `{role}` introuvable 🚫", ephemeral=True)
+
+    intervals = [(timedelta(hours=1), "1h"), (timedelta(days=1), "1d"), (timedelta(days=3), "3d")]
+
+    for delta, label in intervals:
+        due_date = datetime.now(tz) + delta
+        date_str = due_date.strftime("%d/%m/%Y")
+        heure_str = due_date.strftime("%H:%M:%S")
+
+        start_iso = due_date.isoformat()
+        end_iso = (due_date + timedelta(hours=1)).isoformat()
+
+        try:
+            event_data = await create_scheduled(TOKEN, ctx.guild_id, f"TEST {label}", start_iso, end_iso)
+            event_id = event_data.get("id")
+        except Exception as e:
+            logger.error(f"Erreur lors de la création de l'événement: {e}")
+            event_id = None
+
+        devoir = {
+            "date": date_str,
+            "heure": heure_str,
+            "titre": f"TEST {label}",
+            "description": f"TEST {label}",
+            "channel_id": channel_id,
+            "role_to_ping": role_id,
+            "event_id": event_id,
+            "reminders_sent": []
+        }
+
+        guild_data["devoirs"].append(devoir)
+
+    save_data(global_data, DATA_FILE)
+    await ctx.send("✅ Devoirs de test créés ✅", ephemeral=True)
 
 #----------------------------#
 ###-------- Delete --------###
@@ -333,7 +425,10 @@ async def list_command(ctx: SlashContext):
     devoirs = guild_data["devoirs"]
     if not devoirs:
         return await ctx.send("Aucun devoir n'est enregistré pour ce serveur.", ephemeral=True)
-    lines = [f"- **{d['titre']}** (Date: {d['date']} {d['heure']}, Rôle: <@&{d['role_to_ping']}>)" for d in devoirs]
+    lines = []
+    for d in devoirs:
+        desc = f" - {d['description']}" if d.get('description') else ""
+        lines.append(f"- **{d['titre']}**{desc} (Date: {d['date']} {d['heure']}, Rôle: <@&{d['role_to_ping']}>)")
     await ctx.send("Devoirs enregistrés:\n" + "\n".join(lines), ephemeral=True)
 
 
@@ -411,6 +506,62 @@ async def export_command(ctx: SlashContext):
 
     # Clean up the temporary file
     os.remove(backup)
+
+#----------------------------#
+###-------- Import --------###
+#----------------------------#
+@interactions.slash_command(name="import", description="Importer des rappels depuis un JSON", scopes=[guild_id_int], default_member_permissions=8192)
+@interactions.slash_option(name="json_file", description="Fichier JSON", required=True, opt_type=OptionType.ATTACHMENT)
+async def import_command(ctx: SlashContext, json_file):
+    if not str(json_file.filename).endswith(".json"):
+        return await ctx.send("Le fichier doit être en JSON", ephemeral=True)
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(json_file.url) as resp:
+                content = await resp.read()
+        imported = json.loads(content.decode())
+    except Exception:
+        return await ctx.send("JSON invalide", ephemeral=True)
+    global_data = load_data(DATA_FILE)
+    guild_id_str = str(ctx.guild_id)
+    global_data["guilds"][guild_id_str] = imported
+    save_data(global_data, DATA_FILE)
+    await ctx.send("Données importées", ephemeral=True)
+
+#----------------------------#
+###------ Set Perms --------###
+#----------------------------#
+@interactions.slash_command(name="setperm", description="Définir la permission d'une commande", scopes=[guild_id_int], default_member_permissions=8192)
+@interactions.slash_option(name="commande", description="Nom de la commande", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="bits", description="Bits de permission", required=True, opt_type=OptionType.INTEGER)
+async def setperm_command(ctx: SlashContext, commande: str, bits: int):
+    global_data = load_data(DATA_FILE)
+    guild_id = str(ctx.guild_id)
+    guild_data = global_data["guilds"].setdefault(guild_id, {"devoirs": [], "settings": {}})
+    perms = guild_data["settings"].setdefault("command_permissions", {})
+    perms[commande] = bits
+    save_data(global_data, DATA_FILE)
+    await ctx.send(f"Permission pour {commande} enregistrée", ephemeral=True)
+
+#----------------------------#
+###----- Mass Delete -------###
+#----------------------------#
+@interactions.slash_command(name="massdelete", description="Supprimer en masse par préfixe", scopes=[guild_id_int], default_member_permissions=8192)
+@interactions.slash_option(name="prefix", description="Préfixe du titre", required=True, opt_type=OptionType.STRING)
+async def massdelete_command(ctx: SlashContext, prefix: str):
+    global_data = load_data(DATA_FILE)
+    guild_id = str(ctx.guild_id)
+    guild_data = global_data["guilds"].get(guild_id, {"devoirs": [], "settings": {}})
+    devoirs = guild_data.get("devoirs", [])
+    to_remove = [d for d in list(devoirs) if d["titre"].startswith(prefix)]
+    if not to_remove:
+        return await ctx.send("Aucun devoir ne correspond", ephemeral=True)
+    for d in to_remove:
+        if "event_id" in d:
+            await delete_scheduled(TOKEN, ctx.guild_id, d["event_id"])
+        devoirs.remove(d)
+    save_data(global_data, DATA_FILE)
+    await ctx.send(f"{len(to_remove)} devoirs supprimés", ephemeral=True)
 
 
 # ==================== MAIN ====================

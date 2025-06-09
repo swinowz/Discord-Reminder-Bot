@@ -272,13 +272,13 @@ async def reminder_loop():
 #----------------------------#
 @interactions.slash_command(name="add", description="Ajouter un devoir et spécifier un canal de rappel", scopes=[guild_id_int])
 @interactions.slash_option(name="date", description="Date (DD/MM/YYYY)", required=True, opt_type=OptionType.STRING)
-@interactions.slash_option(name="heure", description="Heure (HH:MM[:SS])", required=False, opt_type=OptionType.STRING)
 @interactions.slash_option(name="titre", description="Titre du devoir", required=True, opt_type=OptionType.STRING)
-@interactions.slash_option(name="description", description="Description du devoir", required=False, opt_type=OptionType.STRING)
 @interactions.slash_option(name="role", description="Nom du rôle à pinger", required=True, opt_type=OptionType.STRING)
 @interactions.slash_option(name="channel", description="Canal pour le rappel", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="heure", description="Heure (HH:MM[:SS])", required=False, opt_type=OptionType.STRING)
+@interactions.slash_option(name="description", description="Description du devoir", required=False, opt_type=OptionType.STRING)
 
-async def add_command(ctx: SlashContext, date: str, heure: str | None, titre: str, description: str | None, role: str, channel: str):
+async def add_command(ctx: SlashContext, date: str, titre: str, role: str, channel: str, heure: str | None, description: str | None):
     if not check_command_permission(ctx, "add"):
         return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     global_data = load_data(DATA_FILE)

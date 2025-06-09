@@ -19,20 +19,20 @@
 
 # ☑️ To-Do List (TDL)
 
-- ⚡️ **Import JSON**:   
-Add functionality to import reminders from a JSON file.
-- 📝 **Optional Description Field**:   
-Allow assignments to have an optional description for more details.
+- ⚡️ **Import JSON** ✅:
+Import reminders from a JSON file using `/import`.
+- 📝 **Optional Description Field** ✅:
+Assignments can include an optional description field.
 - 📢 **Multi-Channel Support** ✅✅ -- Done 12/02/2025 -- ✅✅:  
 Enable the use of multiple channels ( to go with multi-roles which is already in place )
-- ⏰ **Smart Time Defaults**:  
-  - If no time is specified, default to `00:00:01`.
-  - If only the hour is provided , auto-complete to `<hour>:00:00`.
-  - If only the hour and minute is provided, auto-complete to `<hour>:<minute>:00`.
-- ⚖️ **Command-Level Permissions**:   
-Add the ability to control permissions for each command directly within the bot.
-- ❌ MASS remove Reminders ❌
-  - For example, remove every reminder starting with .... ( practical use exemple : everything that start with TEST, DEBUG etc ) 
+- ⏰ **Smart Time Defaults** ✅:
+  - If no time is specified, it defaults to `00:00:01`.
+  - If only the hour is provided, the bot auto-completes to `<hour>:00:00`.
+  - If only the hour and minute are provided, the bot auto-completes to `<hour>:<minute>:00`.
+- ⚖️ **Command-Level Permissions** ✅:
+Permissions for commands can now be configured via `/setperm`.
+- ❌ MASS remove Reminders ❌ ✅:
+Use `/massdelete` to remove reminders by prefix.
 ---
 
 # 🎉 Full Revamp Discord Reminder Bot V2.0.0

@@ -1,0 +1,25 @@
+{
+    "guilds": {
+        "968957372166967346": {
+            "devoirs": [
+                {
+                    "date": "09/09/2025",
+                    "heure": "00:00:01",
+                    "titre": "lol",
+                    "description": null,
+                    "channel_id": "968957372166967348",
+                    "role_to_ping": "1332675569959043162",
+                    "event_id": "1381613383337644106",
+                    "reminders_sent": []
+                }
+            ],
+            "settings": {
+                "reminder_intervals": [
+                    3600,
+                    86400,
+                    259200
+                ]
+            }
+        }
+    }
+}

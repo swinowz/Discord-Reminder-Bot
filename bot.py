@@ -74,20 +74,6 @@ def parse_time_str(time_str: str) -> str:
         return ":".join(p.zfill(2) for p in parts[:3])
     raise ValueError("Invalid time format")
 
-
-def check_command_permission(ctx: SlashContext, command: str) -> bool:
-    """Check if the user has permission for the command"""
-    global_data = load_data(DATA_FILE)
-    guild_id = str(ctx.guild_id)
-    guild_data = global_data["guilds"].setdefault(guild_id, {"devoirs": [], "settings": {}})
-    perms = guild_data["settings"].get("command_permissions", {}).get(command)
-    if perms is None:
-        return True
-    member_perms = getattr(ctx.author, "permissions", 0)
-    if hasattr(member_perms, "value"):
-        member_perms = member_perms.value
-    return (member_perms & perms) == perms
-
 # ==================== RAW HTTP HELPERS ====================
 # Fonctions qui font des appels sur l'API discord (récupérer des rôles, créer des événements etc )
 
@@ -278,9 +264,15 @@ async def reminder_loop():
 @interactions.slash_option(name="heure", description="Heure (HH:MM[:SS])", required=False, opt_type=OptionType.STRING)
 @interactions.slash_option(name="description", description="Description du devoir", required=False, opt_type=OptionType.STRING)
 
-async def add_command(ctx: SlashContext, date: str, titre: str, role: str, channel: str, heure: str | None, description: str | None):
-    if not check_command_permission(ctx, "add"):
-        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
+async def add_command(
+    ctx: SlashContext,
+    date: str,
+    titre: str,
+    role: str,
+    channel: str,
+    heure: str | None = None,
+    description: str | None = None,
+):
     global_data = load_data(DATA_FILE)
     guild_id_str = str(ctx.guild_id)
     guild_data = global_data["guilds"].setdefault(guild_id_str, {"devoirs": [], "settings": {}})
@@ -348,8 +340,6 @@ async def add_command(ctx: SlashContext, date: str, titre: str, role: str, chann
     opt_type=OptionType.STRING
 )
 async def delete_command(ctx: SlashContext, title: str):
-    if not check_command_permission(ctx, "delete"):
-        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     global_data = load_data(DATA_FILE)
     guild_id_str = str(ctx.guild_id)
     guild_data = global_data["guilds"].get(guild_id_str, {"devoirs": [], "settings": {}})
@@ -374,8 +364,6 @@ async def delete_command(ctx: SlashContext, title: str):
     scopes=[guild_id_int]
 )
 async def list_command(ctx: SlashContext):
-    if not check_command_permission(ctx, "list"):
-        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     global_data = load_data(DATA_FILE)
     guild_id_str = str(ctx.guild_id)
     guild_data = global_data["guilds"].get(guild_id_str, {"devoirs": [], "settings": {}})
@@ -397,8 +385,6 @@ async def list_command(ctx: SlashContext):
 # 8 = Admin et 8192 = manage_messages <- en gros ceux qui ont au moins une des perms peuvent faire la cmd 
 
 async def setupintervals_command(ctx: SlashContext):
-    if not check_command_permission(ctx, "setupintervals"):
-        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     """"
     Commande pour définir les intervalles de rappel (besoin des perms "Gérer les messages" ou "Administrateur")
     """
@@ -436,8 +422,6 @@ async def on_select_intervals_callback(ctx: ComponentContext):
 @interactions.slash_command(name="export",description="Exporter une sauvegarde des devoirs",scopes=[guild_id_int],
                             default_member_permissions=8192)
 async def export_command(ctx: SlashContext):
-    if not check_command_permission(ctx, "export"):
-        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     """Créer une sauvegarde des devoirs enregistrés sur le serveur et envoi la backup en DM"""
     guild_id_str = str(ctx.guild_id)  #
     global_data = load_data(DATA_FILE)  # chargement du fichier json entier
@@ -474,12 +458,12 @@ async def export_command(ctx: SlashContext):
 @interactions.slash_command(name="import", description="Importer des rappels depuis un JSON", scopes=[guild_id_int], default_member_permissions=8192)
 @interactions.slash_option(name="json_file", description="Fichier JSON", required=True, opt_type=OptionType.ATTACHMENT)
 async def import_command(ctx: SlashContext, json_file):
-    if not check_command_permission(ctx, "import"):
-        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     if not str(json_file.filename).endswith(".json"):
         return await ctx.send("Le fichier doit être en JSON", ephemeral=True)
-    content = await json_file.read()
     try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(json_file.url) as resp:
+                content = await resp.read()
         imported = json.loads(content.decode())
     except Exception:
         return await ctx.send("JSON invalide", ephemeral=True)
@@ -496,8 +480,6 @@ async def import_command(ctx: SlashContext, json_file):
 @interactions.slash_option(name="commande", description="Nom de la commande", required=True, opt_type=OptionType.STRING)
 @interactions.slash_option(name="bits", description="Bits de permission", required=True, opt_type=OptionType.INTEGER)
 async def setperm_command(ctx: SlashContext, commande: str, bits: int):
-    if not check_command_permission(ctx, "setperm"):
-        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     global_data = load_data(DATA_FILE)
     guild_id = str(ctx.guild_id)
     guild_data = global_data["guilds"].setdefault(guild_id, {"devoirs": [], "settings": {}})
@@ -512,8 +494,6 @@ async def setperm_command(ctx: SlashContext, commande: str, bits: int):
 @interactions.slash_command(name="massdelete", description="Supprimer en masse par préfixe", scopes=[guild_id_int], default_member_permissions=8192)
 @interactions.slash_option(name="prefix", description="Préfixe du titre", required=True, opt_type=OptionType.STRING)
 async def massdelete_command(ctx: SlashContext, prefix: str):
-    if not check_command_permission(ctx, "massdelete"):
-        return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     global_data = load_data(DATA_FILE)
     guild_id = str(ctx.guild_id)
     guild_data = global_data["guilds"].get(guild_id, {"devoirs": [], "settings": {}})

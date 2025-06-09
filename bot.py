@@ -478,8 +478,10 @@ async def import_command(ctx: SlashContext, json_file):
         return await ctx.send("🚫 Permission insuffisante 🚫", ephemeral=True)
     if not str(json_file.filename).endswith(".json"):
         return await ctx.send("Le fichier doit être en JSON", ephemeral=True)
-    content = await json_file.read()
     try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(json_file.url) as resp:
+                content = await resp.read()
         imported = json.loads(content.decode())
     except Exception:
         return await ctx.send("JSON invalide", ephemeral=True)

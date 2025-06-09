@@ -1,4 +1,5 @@
 .env
 .vscode
-.json
-data/
+*.json
+devoirs.json
+data/devoirs.json

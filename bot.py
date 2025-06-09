@@ -324,6 +324,61 @@ async def add_command(
     save_data(global_data, DATA_FILE)
 
     await ctx.send("✅ Devoir ajouté avec succès et événement créé ✅", ephemeral=True)
+#----------------------------#
+###------- TestAdd ---------###
+#----------------------------#
+@interactions.slash_command(name="testadd", description="Ajouter des devoirs de test", scopes=[guild_id_int])
+@interactions.slash_option(name="channel", description="Canal pour le rappel", required=True, opt_type=OptionType.STRING)
+@interactions.slash_option(name="role", description="Nom du rôle à pinger", required=True, opt_type=OptionType.STRING)
+async def testadd_command(ctx: SlashContext, channel: str, role: str):
+    """Ajoute trois devoirs de test avec des échéances 1h, 1j et 3j."""
+    tz = pytz.timezone(TIMEZONE)
+    global_data = load_data(DATA_FILE)
+    guild_id_str = str(ctx.guild_id)
+    guild_data = global_data["guilds"].setdefault(guild_id_str, {"devoirs": [], "settings": {}})
+
+    channels_json = await get_channels(TOKEN, ctx.guild_id)
+    channel_id = next((c["id"] for c in channels_json if c["name"] == channel and c["type"] == 0), None)
+    if not channel_id:
+        return await ctx.send(f"🚫 Canal `{channel}` introuvable ou non textuel 🚫", ephemeral=True)
+
+    roles_json = await get_roles(TOKEN, ctx.guild_id)
+    role_id = next((r["id"] for r in roles_json if r["name"] == role), None)
+    if not role_id:
+        return await ctx.send(f"🚫 Rôle `{role}` introuvable 🚫", ephemeral=True)
+
+    intervals = [(timedelta(hours=1), "1h"), (timedelta(days=1), "1d"), (timedelta(days=3), "3d")]
+
+    for delta, label in intervals:
+        due_date = datetime.now(tz) + delta
+        date_str = due_date.strftime("%d/%m/%Y")
+        heure_str = due_date.strftime("%H:%M:%S")
+
+        start_iso = due_date.isoformat()
+        end_iso = (due_date + timedelta(hours=1)).isoformat()
+
+        try:
+            event_data = await create_scheduled(TOKEN, ctx.guild_id, f"TEST {label}", start_iso, end_iso)
+            event_id = event_data.get("id")
+        except Exception as e:
+            logger.error(f"Erreur lors de la création de l'événement: {e}")
+            event_id = None
+
+        devoir = {
+            "date": date_str,
+            "heure": heure_str,
+            "titre": f"TEST {label}",
+            "description": f"TEST {label}",
+            "channel_id": channel_id,
+            "role_to_ping": role_id,
+            "event_id": event_id,
+            "reminders_sent": []
+        }
+
+        guild_data["devoirs"].append(devoir)
+
+    save_data(global_data, DATA_FILE)
+    await ctx.send("✅ Devoirs de test créés ✅", ephemeral=True)
 
 #----------------------------#
 ###-------- Delete --------###

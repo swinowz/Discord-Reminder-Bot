@@ -1,11 +1,9 @@
 # ✨ Usage Guide ✨
 
-### Admins Only 
+### Usage
 - **`/setupchannel`** - Configure the channel where reminders will be sent.
 - **`/setupinterval`** - Set the intervals for reminders (e.g., x days or hours before the final due date).
 - **`/export`** - Export your server's reminders and receive a backup in your DMs.
-
-### Everyone - General Usage
 - **`/add`** - Add a new reminder.
 - **`/delete`** - Delete a specific reminder.
 - **`/list`** - List all reminders currently set for the server.
@@ -23,14 +21,14 @@
 Import reminders from a JSON file using `/import`.
 - 📝 **Optional Description Field** ✅:
 Assignments can include an optional description field.
-- 📢 **Multi-Channel Support** ✅✅ -- Done 12/02/2025 -- ✅✅:  
+- 📢 **Multi-Channel Support** ✅✅ :
 Enable the use of multiple channels ( to go with multi-roles which is already in place )
 - ⏰ **Smart Time Defaults** ✅:
   - If no time is specified, it defaults to `00:00:01`.
   - If only the hour is provided, the bot auto-completes to `<hour>:00:00`.
   - If only the hour and minute are provided, the bot auto-completes to `<hour>:<minute>:00`.
-- ⚖️ **Command-Level Permissions** ✅:
-Permissions for commands can now be configured via `/setperm`.
+- ⚖️ **Command-Level Permissions** ❌:
+can't figure out how to do that part so no eta
 - ❌ MASS remove Reminders ❌ ✅:
 Use `/massdelete` to remove reminders by prefix.
 ---

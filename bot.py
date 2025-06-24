@@ -324,8 +324,11 @@ async def add_command(
     save_data(global_data, DATA_FILE)
 
     await ctx.send("✅ Devoir ajouté avec succès et événement créé ✅", ephemeral=True)
+
+
+
 #----------------------------#
-###------- TestAdd ---------###
+##-------- TestAdd ---------##
 #----------------------------#
 @interactions.slash_command(name="testadd", description="Ajouter des devoirs de test", scopes=[guild_id_int])
 @interactions.slash_option(name="channel", description="Canal pour le rappel", required=True, opt_type=OptionType.STRING)
@@ -528,7 +531,7 @@ async def import_command(ctx: SlashContext, json_file):
     save_data(global_data, DATA_FILE)
     await ctx.send("Données importées", ephemeral=True)
 
-#----------------------------#
+""" #----------------------------#
 ###------ Set Perms --------###
 #----------------------------#
 @interactions.slash_command(name="setperm", description="Définir la permission d'une commande", scopes=[guild_id_int], default_member_permissions=8192)
@@ -542,7 +545,7 @@ async def setperm_command(ctx: SlashContext, commande: str, bits: int):
     perms[commande] = bits
     save_data(global_data, DATA_FILE)
     await ctx.send(f"Permission pour {commande} enregistrée", ephemeral=True)
-
+ """
 #----------------------------#
 ###----- Mass Delete -------###
 #----------------------------#
